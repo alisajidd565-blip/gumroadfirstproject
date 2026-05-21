@@ -5,8 +5,8 @@ import Layout from '@/components/Layout';
 const FEATURES = [
   {
     icon: '⚡',
-    title: 'GPT-4 Powered',
-    description: 'Not generic AI. Platform-specific prompt engineering that understands what makes content perform on each channel.',
+    title: 'Groq / Llama 3.3 Powered',
+    description: 'Fast, capable AI with platform-specific prompt engineering tuned for each channel.',
   },
   {
     icon: '🎯',
@@ -107,7 +107,7 @@ export default function HomePage() {
           <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-4 py-1.5 mb-8">
             <Zap size={12} className="text-cyan-400" fill="currentColor" />
             <span className="text-xs font-semibold text-cyan-400 tracking-wide uppercase">
-              Powered by GPT-4 Turbo
+              Powered by Groq (Llama 3.3)
             </span>
           </div>
 

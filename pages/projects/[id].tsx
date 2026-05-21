@@ -184,7 +184,7 @@ export default function ProjectPage() {
         {project.status === 'processing' || regenerating ? (
           <div className="card border-cyan-500/20 bg-cyan-500/5 text-center py-12 animate-pulse-slow">
             <Loader size={24} className="text-cyan-400 mx-auto mb-3 animate-spin" />
-            <p className="text-sm text-cyan-300 font-medium">GPT-4 is generating your content…</p>
+            <p className="text-sm text-cyan-300 font-medium">AI is generating your content…</p>
             <p className="text-xs text-slate-500 mt-1">This usually takes 10–30 seconds.</p>
           </div>
         ) : project.status === 'failed' ? (

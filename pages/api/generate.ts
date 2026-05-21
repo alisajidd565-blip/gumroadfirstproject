@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
 import { generateAllChannels } from '@/lib/groq';
+import { incrementProjectUsage } from '@/lib/usage';
 import type { Channel, BrandVoice } from '@/types';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,7 +21,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const db = getAdminSupabase();
 
-  // ── Fetch the project (verify ownership) ────────────────────────────────────
   const { data: project, error: projectError } = await db
     .from('projects')
     .select('id, user_id, source_text, channels, brand_voice, status')
@@ -32,36 +32,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(404).json({ error: 'Project not found.' });
   }
 
-  // ── Don't regenerate if already processing ──────────────────────────────────
   if (project.status === 'processing') {
     return res.status(409).json({ error: 'This project is already being processed.' });
   }
 
-  // ── Mark as processing ──────────────────────────────────────────────────────
+  const countsTowardQuota = project.status === 'pending';
+
   await db
     .from('projects')
     .update({ status: 'processing' })
     .eq('id', project_id);
 
   try {
-    // ── Generate content for all channels in parallel ───────────────────────
     const results = await generateAllChannels(
       project.channels as Channel[],
       project.source_text,
       project.brand_voice as BrandVoice
     );
 
-    // ── Check if any channels completely failed ─────────────────────────────
     const allFailed = results.every((r) => r.error || !r.content);
     if (allFailed) {
       await db.from('projects').update({ status: 'failed' }).eq('id', project_id);
       return res.status(502).json({ error: 'AI generation failed for all channels. Please try again.' });
     }
 
-    // ── Delete old outputs (in case of regeneration) ────────────────────────
     await db.from('outputs').delete().eq('project_id', project_id);
 
-    // ── Insert new outputs ──────────────────────────────────────────────────
     const successfulOutputs = results.filter((r) => !r.error && r.content);
 
     const { data: insertedOutputs, error: insertError } = await db
@@ -83,13 +79,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to save generated content.' });
     }
 
-    // ── Mark project as done ────────────────────────────────────────────────
     await db
       .from('projects')
       .update({ status: 'done' })
       .eq('id', project_id);
 
-    // ── Report any partially failed channels ────────────────────────────────
+    if (countsTowardQuota) {
+      await incrementProjectUsage(db, payload.sub);
+    }
+
     const failedChannels = results.filter((r) => r.error).map((r) => r.channel);
 
     return res.status(200).json({
@@ -101,8 +99,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (err) {
     console.error('Generation error:', err);
     await db.from('projects').update({ status: 'failed' }).eq('id', project_id);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : 'Generation failed. Please try again.',
-    });
+    const message = err instanceof Error ? err.message : 'Generation failed. Please try again.';
+    if (message.includes('GROQ_API_KEY')) {
+      return res.status(503).json({
+        error: 'AI is not configured. Add GROQ_API_KEY to your environment.',
+        code: 'GROQ_NOT_CONFIGURED',
+      });
+    }
+    return res.status(500).json({ error: message });
   }
 }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyPassword, validateEmail, signToken, setAuthCookie } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
+import { getNextMonthReset } from '@/lib/usage';
 import type { LoginRequest, ApiError, AuthResponse } from '@/types';
 
 export default async function handler(
@@ -63,16 +64,13 @@ export default async function handler(
     // Remove password hash from response
     const { password_hash: _, ...safeUser } = userData;
 
-    return res.status(200).json({ user: safeUser as any, token });
+    return res.status(200).json({ user: safeUser as any });
   } catch (err) {
     console.error('Login error:', err);
+    const message = err instanceof Error ? err.message : '';
+    if (message.includes('JWT_SECRET') || message.includes('SUPABASE')) {
+      return res.status(500).json({ error: `Server misconfigured: ${message}` });
+    }
     return res.status(500).json({ error: 'Internal server error.' });
   }
-}
-
-function getNextMonthReset(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1, 1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
 }

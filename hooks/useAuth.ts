@@ -23,7 +23,7 @@ export function useAuth(): UseAuthReturn {
 
   const fetchUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
         setState({ user: data.user, loading: false, error: null });

@@ -17,7 +17,7 @@ export default function Layout({
   user,
   onLogout,
   title = 'ContentRepurposer AI',
-  description = 'Transform any blog post into platform-perfect content for Twitter, LinkedIn, Instagram, and Email — powered by GPT-4.',
+  description = 'Transform any blog post into platform-perfect content for Twitter, LinkedIn, Instagram, and Email — powered by Groq AI.',
   showFooter = true,
 }: LayoutProps) {
   const fullTitle = title === 'ContentRepurposer AI' ? title : `${title} — ContentRepurposer AI`;

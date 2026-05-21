@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hashPassword, validatePasswordStrength, validateEmail, signToken, setAuthCookie } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
+import { getFreePlanId, mapDatabaseError } from '@/lib/plans';
 import type { SignupRequest, ApiError, AuthResponse } from '@/types';
 
 export default async function handler(
@@ -13,7 +14,6 @@ export default async function handler(
 
   const { email, password, full_name } = req.body as SignupRequest;
 
-  // ── Validate input ──────────────────────────────────────────────────────────
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
@@ -30,30 +30,38 @@ export default async function handler(
   try {
     const db = getAdminSupabase();
 
-    // ── Check if email already in use ───────────────────────────────────────
-    const { data: existing } = await db
+    const { data: existing, error: existingError } = await db
       .from('users')
       .select('id')
       .eq('email', email.toLowerCase().trim())
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('Signup email lookup error:', existingError);
+      const mapped = mapDatabaseError(existingError);
+      return res.status(500).json({
+        error: mapped ?? 'Database connection failed. Check Supabase credentials in .env.local.',
+      });
+    }
 
     if (existing) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
-    // ── Get the free plan ID ────────────────────────────────────────────────
-    const { data: freePlan, error: planError } = await db
-      .from('plans')
-      .select('id')
-      .eq('name', 'free')
-      .single();
-
-    if (planError || !freePlan) {
-      console.error('Could not fetch free plan:', planError);
-      return res.status(500).json({ error: 'Failed to initialize account plan.' });
+    let freePlanId: string;
+    try {
+      freePlanId = await getFreePlanId(db);
+    } catch (planErr) {
+      console.error('Could not fetch/seed free plan:', planErr);
+      const mapped = mapDatabaseError(planErr as { code?: string; message?: string });
+      return res.status(500).json({
+        error:
+          mapped ??
+          'Failed to initialize account plan. Run schema.sql in Supabase SQL Editor, then try again.',
+        code: 'PLAN_SETUP_REQUIRED',
+      });
     }
 
-    // ── Hash password and create user ───────────────────────────────────────
     const password_hash = await hashPassword(password);
 
     const { data: user, error: createError } = await db
@@ -62,7 +70,7 @@ export default async function handler(
         email: email.toLowerCase().trim(),
         password_hash,
         full_name: full_name?.trim() || null,
-        plan_id: freePlan.id,
+        plan_id: freePlanId,
       })
       .select(`
         id, email, full_name, plan_id, brand_voice,
@@ -74,19 +82,28 @@ export default async function handler(
 
     if (createError || !user) {
       console.error('Error creating user:', createError);
-      return res.status(500).json({ error: 'Failed to create account. Please try again.' });
+      const mapped = createError ? mapDatabaseError(createError) : null;
+      if (mapped?.includes('already exists')) {
+        return res.status(409).json({ error: mapped });
+      }
+      return res.status(500).json({
+        error: mapped ?? 'Failed to create account. Please try again.',
+      });
     }
 
-    // ── Sign JWT and set cookie ─────────────────────────────────────────────
     const token = signToken({ sub: user.id, email: user.email, plan: 'free' });
     setAuthCookie(res, token);
 
-    return res.status(201).json({
-      user,
-      token,
-    });
+    return res.status(201).json({ user });
   } catch (err) {
     console.error('Signup error:', err);
+    const message = err instanceof Error ? err.message : 'Internal server error.';
+    if (message.includes('JWT_SECRET')) {
+      return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET is not set.' });
+    }
+    if (message.includes('SUPABASE')) {
+      return res.status(500).json({ error: `Server misconfigured: ${message}` });
+    }
     return res.status(500).json({ error: 'Internal server error.' });
   }
 }

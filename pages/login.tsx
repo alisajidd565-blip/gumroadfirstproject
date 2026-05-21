@@ -4,10 +4,11 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import { Zap, Eye, EyeOff } from 'lucide-react';
 import Layout from '@/components/Layout';
+import { getSafeRedirectPath } from '@/lib/redirect';
 
 export default function LoginPage() {
   const router = useRouter();
-  const next = (router.query.next as string) || '/dashboard';
+  const next = getSafeRedirectPath(router.query.next);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ email: email.trim(), password }),
       });
 

@@ -1,7 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
-import type { CreateProjectRequest } from '@/types';
+import {
+  isChannelAllowedForPlan,
+  channelRestrictionMessage,
+} from '@/lib/plans';
+import { getUsageState } from '@/lib/usage';
+import type { CreateProjectRequest, Channel, PlanName } from '@/types';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const payload = requireAuth(req, res);
@@ -9,7 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const db = getAdminSupabase();
 
-  // ── GET /api/projects — list user's projects ──────────────────────────────
   if (req.method === 'GET') {
     const page = parseInt((req.query.page as string) || '1', 10);
     const limit = parseInt((req.query.limit as string) || '20', 10);
@@ -41,11 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // ── POST /api/projects — create new project ───────────────────────────────
   if (req.method === 'POST') {
     const { title, source_text, channels, brand_voice } = req.body as CreateProjectRequest;
 
-    // Input validation
     if (!source_text || source_text.trim().length < 50) {
       return res.status(400).json({ error: 'Source text must be at least 50 characters.' });
     }
@@ -58,43 +60,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Invalid channel specified.' });
     }
 
-    // ── Enforce plan limits ─────────────────────────────────────────────────
-    const { data: user, error: userError } = await db
-      .from('users')
-      .select(`
-        projects_this_month, month_reset_at,
-        plan:plans(project_limit)
-      `)
-      .eq('id', payload.sub)
-      .single();
-
-    if (userError || !user) {
+    let usage;
+    try {
+      usage = await getUsageState(db, payload.sub);
+    } catch (userError) {
+      console.error('Error loading usage:', userError);
       return res.status(500).json({ error: 'Failed to verify plan limits.' });
     }
 
-    // Reset monthly counter if month has rolled over
-    let projectsThisMonth = user.projects_this_month;
-    if (new Date(user.month_reset_at) <= new Date()) {
-      projectsThisMonth = 0;
-      await db
-        .from('users')
-        .update({
-          projects_this_month: 0,
-          month_reset_at: getNextMonthReset(),
-        })
-        .eq('id', payload.sub);
-    }
-
-    const planLimit = (user.plan as any)?.project_limit ?? 3;
-
-    if (projectsThisMonth >= planLimit) {
+    if (usage.projectsThisMonth >= usage.planLimit) {
       return res.status(403).json({
-        error: `You have reached your plan limit of ${planLimit} projects/month. Upgrade your plan to continue.`,
+        error: `You have reached your plan limit of ${usage.planLimit} projects/month. Upgrade your plan to continue.`,
         code: 'PLAN_LIMIT_REACHED',
       });
     }
 
-    // ── Create the project ──────────────────────────────────────────────────
+    if (!isChannelAllowedForPlan(usage.planName as PlanName, channels as Channel[])) {
+      return res.status(403).json({
+        error: channelRestrictionMessage(usage.planName as PlanName),
+        code: 'CHANNEL_NOT_ALLOWED',
+      });
+    }
+
     const { data: project, error: createError } = await db
       .from('projects')
       .insert({
@@ -113,21 +100,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to create project.' });
     }
 
-    // Increment monthly counter
-    await db
-      .from('users')
-      .update({ projects_this_month: projectsThisMonth + 1 })
-      .eq('id', payload.sub);
-
+    // Monthly quota increments only after successful AI generation (see /api/generate)
     return res.status(201).json({ project });
   }
 
   return res.status(405).json({ error: 'Method not allowed.' });
-}
-
-function getNextMonthReset(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1, 1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
 }

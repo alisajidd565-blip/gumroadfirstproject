@@ -5,12 +5,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import type { JwtPayload, PlanName } from '@/types';
 import { COOKIE_NAME } from '@/types';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 const BCRYPT_ROUNDS = 12;
 const TOKEN_EXPIRY = '7d';
 
-if (!JWT_SECRET && process.env.NODE_ENV !== 'test') {
-  console.warn('JWT_SECRET is not set. Auth will not work.');
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('Missing JWT_SECRET environment variable.');
+  }
+  return secret;
 }
 
 // ─── Password ─────────────────────────────────────────────────────────────────
@@ -40,12 +43,12 @@ export function signToken(payload: {
   email: string;
   plan: PlanName;
 }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, getJwtSecret()) as JwtPayload;
   } catch {
     return null;
   }

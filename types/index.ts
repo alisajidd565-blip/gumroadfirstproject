@@ -98,7 +98,8 @@ export interface LoginRequest {
 
 export interface AuthResponse {
   user: Omit<User, 'password_hash'>;
-  token: string;
+  /** Deprecated — auth uses HttpOnly cookie only */
+  token?: string;
 }
 
 export interface CreateProjectRequest {

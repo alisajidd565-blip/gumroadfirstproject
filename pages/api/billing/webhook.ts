@@ -171,6 +171,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('Webhook processing error:', err);
-    return res.status(200).json({ received: true, error: 'Processing error.' });
+    return res.status(500).json({ error: 'Webhook processing failed.' });
   }
 }

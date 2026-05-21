@@ -4,9 +4,9 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import { Zap, Eye, EyeOff, Check } from 'lucide-react';
 import Layout from '@/components/Layout';
-
 export default function SignupPage() {
   const router = useRouter();
+  const upgradePlan = router.query.plan as string | undefined;
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,18 +36,27 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ email: email.trim(), password, full_name: fullName.trim() }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Signup failed. Please try again.');
+        const hint =
+          data.code === 'PLAN_SETUP_REQUIRED'
+            ? ' Run schema.sql in Supabase, or visit /api/setup/status to diagnose.'
+            : '';
+        toast.error((data.error || 'Signup failed. Please try again.') + hint, { duration: 8000 });
         return;
       }
 
       toast.success('Account created! Welcome.');
-      router.push('/dashboard');
+      if (upgradePlan === 'pro' || upgradePlan === 'business') {
+        router.push(`/settings?upgrade=${upgradePlan}`);
+      } else {
+        router.push('/dashboard');
+      }
     } catch {
       toast.error('Network error. Please try again.');
     } finally {
@@ -173,7 +182,10 @@ export default function SignupPage() {
             </p>
 
             <p className="mt-4 text-center text-xs text-slate-600 leading-relaxed">
-              By creating an account, you agree to our Terms of Service and Privacy Policy.
+              By creating an account, you agree to our{' '}
+              <Link href="/terms" className="text-cyan-500 hover:text-cyan-400">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" className="text-cyan-500 hover:text-cyan-400">Privacy Policy</Link>.
             </p>
           </div>
         </div>

@@ -6,8 +6,9 @@ import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import ChannelSelector from '@/components/ChannelSelector';
 import { useAuth } from '@/hooks/useAuth';
-import type { Channel, BrandVoice } from '@/types';
+import type { Channel, BrandVoice, PlanName } from '@/types';
 import { BRAND_VOICES } from '@/types';
+import { ALLOWED_CHANNELS_BY_PLAN } from '@/lib/plans';
 
 const MIN_TEXT_LENGTH = 50;
 const MAX_TEXT_LENGTH = 20000;
@@ -32,6 +33,14 @@ export default function NewProjectPage() {
     if (user?.brand_voice) setBrandVoice(user.brand_voice as BrandVoice);
   }, [user]);
 
+  const planName = ((user?.plan as { name?: PlanName })?.name ?? 'free') as PlanName;
+  const allowedChannels = ALLOWED_CHANNELS_BY_PLAN[planName];
+
+  useEffect(() => {
+    if (!user) return;
+    setChannels((prev) => prev.filter((c) => allowedChannels.includes(c)));
+  }, [user, planName]);
+
   const textLength = sourceText.trim().length;
   const textValid = textLength >= MIN_TEXT_LENGTH;
   const textTooLong = textLength > MAX_TEXT_LENGTH;
@@ -50,6 +59,7 @@ export default function NewProjectPage() {
       const createRes = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           title: title.trim() || undefined,
           source_text: sourceText.trim(),
@@ -66,6 +76,10 @@ export default function NewProjectPage() {
           router.push('/settings');
           return;
         }
+        if (createRes.status === 403 && createData.code === 'CHANNEL_NOT_ALLOWED') {
+          toast.error(createData.error, { duration: 6000 });
+          return;
+        }
         throw new Error(createData.error || 'Failed to create project.');
       }
 
@@ -77,6 +91,7 @@ export default function NewProjectPage() {
       const genRes = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ project_id: project.id }),
       });
 
@@ -109,8 +124,7 @@ export default function NewProjectPage() {
     );
   }
 
-  const planName = (user.plan as any)?.name ?? 'free';
-  const planLimit = (user.plan as any)?.project_limit ?? 3;
+  const planLimit = (user.plan as { project_limit?: number })?.project_limit ?? 3;
   const atLimit = user.projects_this_month >= planLimit;
 
   return (
@@ -215,10 +229,17 @@ export default function NewProjectPage() {
             <p className="text-sm text-slate-500 -mt-2">
               Select all the platforms you want content for.
             </p>
+            {planName === 'free' && (
+              <p className="text-xs text-slate-500 -mt-2 mb-2">
+                Free plan: Twitter and LinkedIn only.{' '}
+                <Link href="/settings" className="text-cyan-400 hover:text-cyan-300">Upgrade</Link> for all channels.
+              </p>
+            )}
             <ChannelSelector
               selected={channels}
               onChange={setChannels}
               disabled={loading}
+              planName={planName}
             />
             {!channelsValid && (
               <p className="text-xs text-amber-400">Select at least one channel.</p>
@@ -284,7 +305,7 @@ export default function NewProjectPage() {
               <p className="text-sm text-cyan-300 font-medium">
                 {step === 'creating'
                   ? 'Setting up your project…'
-                  : `GPT-4 is generating content for ${channels.length} channel${channels.length > 1 ? 's' : ''}. This takes 10–30 seconds.`}
+                  : `AI is generating content for ${channels.length} channel${channels.length > 1 ? 's' : ''}. This takes 10–30 seconds.`}
               </p>
             </div>
           )}
