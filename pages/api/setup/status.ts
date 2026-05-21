@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAdminSupabase } from '@/lib/supabase';
-import { ensurePlansSeeded } from '@/lib/plans';
+import { ensurePlansSeeded, mapDatabaseError } from '@/lib/plans';
 
 /**
  * Public setup diagnostic — helps verify env + database before signup.
@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     paddle_api_key: Boolean(process.env.PADDLE_API_KEY),
     plans_table: false,
     free_plan: false,
+    social_tables: false,
   };
 
   let readyForSignup = Boolean(
@@ -39,18 +40,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
 
     checks.free_plan = Boolean(freePlan);
+    const { error: socialError } = await db
+      .from('social_connections')
+      .select('id')
+      .limit(1);
+
+    checks.social_tables = !socialError;
     readyForSignup = readyForSignup && checks.free_plan;
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Database check failed';
+    const message =
+      mapDatabaseError(err) ??
+      (err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message ?? 'Database check failed');
     checks.database_error = message;
     readyForSignup = false;
   }
+
+  const databaseError = typeof checks.database_error === 'string' ? checks.database_error : '';
 
   return res.status(200).json({
     ready_for_signup: readyForSignup,
     checks,
     hint: !readyForSignup
-      ? 'Set SUPABASE_* and JWT_SECRET in .env.local, then open Supabase SQL Editor and run schema.sql (or rely on auto-plan seed on first signup).'
+      ? databaseError.includes('Database tables are missing')
+        ? 'Open Supabase SQL Editor and run the full contents of schema.sql.'
+        : 'Set SUPABASE_* and JWT_SECRET in .env.local, then open Supabase SQL Editor and run schema.sql.'
       : undefined,
   });
 }

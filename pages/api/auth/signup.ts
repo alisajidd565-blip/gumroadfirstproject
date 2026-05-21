@@ -53,7 +53,7 @@ export default async function handler(
       freePlanId = await getFreePlanId(db);
     } catch (planErr) {
       console.error('Could not fetch/seed free plan:', planErr);
-      const mapped = mapDatabaseError(planErr as { code?: string; message?: string });
+      const mapped = mapDatabaseError(planErr);
       return res.status(500).json({
         error:
           mapped ??

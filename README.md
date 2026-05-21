@@ -15,6 +15,7 @@ Transform any blog post or article into platform-optimized content for **Twitter
 - **Project history**: All past projects saved, paginated dashboard
 - **Editable outputs**: In-app editing + save
 - **Copy & download**: One-click clipboard copy and .txt download
+- **Direct publishing**: Connect LinkedIn and X/Twitter, then publish generated posts from the project page
 - **Dark mode**: System-aware + toggleable
 - **Responsive**: Mobile-first Tailwind CSS design
 - **Supabase**: Postgres database + Row Level Security
@@ -137,14 +138,37 @@ Then fill in all values in `.env.local`. See below for where to get each one.
    - Copy the destination **secret key** → `PADDLE_WEBHOOK_SECRET`
 7. Update `plans.stripe_price_id` in Supabase with your real Paddle price IDs
 
-### 6. Generate a JWT secret
+### 6. Set up social publishing (optional)
+
+LinkedIn:
+
+1. Create an app in the [LinkedIn Developer Portal](https://www.linkedin.com/developers/apps)
+2. Add the **Share on LinkedIn** product
+3. Add redirect URLs:
+   - Local: `http://localhost:3000/api/social/callback/linkedin`
+   - Production: `https://your-domain.com/api/social/callback/linkedin`
+4. Set `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`
+
+X/Twitter:
+
+1. Create an app in the [X Developer Portal](https://developer.x.com/)
+2. Enable OAuth 2.0 Authorization Code with PKCE
+3. Add redirect URLs:
+   - Local: `http://localhost:3000/api/social/callback/twitter`
+   - Production: `https://your-domain.com/api/social/callback/twitter`
+4. Request scopes: `tweet.read`, `tweet.write`, `users.read`, `offline.access`
+5. Set `X_CLIENT_ID` and `X_CLIENT_SECRET`
+
+Instagram direct publishing is not enabled yet because Meta requires an image/video media container before a caption can be published.
+
+### 7. Generate a JWT secret
 
 ```bash
 openssl rand -base64 64
 # Paste the output as JWT_SECRET in .env.local
 ```
 
-### 7. Run locally
+### 8. Run locally
 
 ```bash
 npm run dev
@@ -189,6 +213,11 @@ Follow the prompts. Then add environment variables in the Vercel dashboard under
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API |
 | `JWT_SECRET` | Generate with `openssl rand -base64 64` |
+| `SOCIAL_TOKEN_SECRET` | Optional separate encryption secret for connected app tokens |
+| `LINKEDIN_CLIENT_ID` | LinkedIn Developer Portal → Auth |
+| `LINKEDIN_CLIENT_SECRET` | LinkedIn Developer Portal → Auth |
+| `X_CLIENT_ID` | X Developer Portal → OAuth 2.0 Client ID |
+| `X_CLIENT_SECRET` | X Developer Portal → OAuth 2.0 Client Secret |
 | `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
 | `GROQ_MODEL` | Optional Groq model id (default: `llama-3.3-70b-versatile`) |
 | `PADDLE_API_KEY` | Paddle → Developer tools → Authentication |

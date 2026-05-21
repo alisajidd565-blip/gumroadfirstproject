@@ -70,7 +70,7 @@ export type Database = {
           email: string;
           password_hash: string;
           full_name?: string | null;
-          plan_id?: string;
+          plan_id: string;
           stripe_customer_id?: string | null;
           stripe_subscription_id?: string | null;
           subscription_status?: 'active' | 'inactive' | 'canceled';
@@ -115,6 +115,59 @@ export type Database = {
             columns: ['plan_id'];
             isOneToOne: false;
             referencedRelation: 'plans';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      social_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: 'twitter' | 'linkedin';
+          provider_user_id: string;
+          display_name: string | null;
+          username: string | null;
+          access_token: string;
+          refresh_token: string | null;
+          scopes: string[] | null;
+          expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: 'twitter' | 'linkedin';
+          provider_user_id: string;
+          display_name?: string | null;
+          username?: string | null;
+          access_token: string;
+          refresh_token?: string | null;
+          scopes?: string[] | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: 'twitter' | 'linkedin';
+          provider_user_id?: string;
+          display_name?: string | null;
+          username?: string | null;
+          access_token?: string;
+          refresh_token?: string | null;
+          scopes?: string[] | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'social_connections_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
             referencedColumns: ['id'];
           },
         ];
@@ -221,6 +274,60 @@ export type Database = {
             columns: ['project_id'];
             isOneToOne: false;
             referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      social_publications: {
+        Row: {
+          id: string;
+          user_id: string;
+          output_id: string;
+          provider: 'twitter' | 'linkedin';
+          provider_post_id: string | null;
+          provider_url: string | null;
+          status: 'published' | 'failed';
+          error: string | null;
+          published_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          output_id: string;
+          provider: 'twitter' | 'linkedin';
+          provider_post_id?: string | null;
+          provider_url?: string | null;
+          status?: 'published' | 'failed';
+          error?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          output_id?: string;
+          provider?: 'twitter' | 'linkedin';
+          provider_post_id?: string | null;
+          provider_url?: string | null;
+          status?: 'published' | 'failed';
+          error?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'social_publications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'social_publications_output_id_fkey';
+            columns: ['output_id'];
+            isOneToOne: false;
+            referencedRelation: 'outputs';
             referencedColumns: ['id'];
           },
         ];

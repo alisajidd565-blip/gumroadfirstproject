@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   email           TEXT NOT NULL UNIQUE,
   password_hash   TEXT NOT NULL,                -- bcrypt hash; never store plaintext
   full_name       TEXT,
-  plan_id         UUID NOT NULL REFERENCES plans(id) DEFAULT (SELECT id FROM plans WHERE name = 'free'),
+  plan_id         UUID NOT NULL REFERENCES plans(id),
   stripe_customer_id TEXT,                      -- Paddle customer ID (ctm_...) after checkout
   stripe_subscription_id TEXT,                  -- Paddle subscription ID (sub_...)
   subscription_status TEXT DEFAULT 'inactive',  -- 'active' | 'inactive' | 'canceled'
@@ -41,6 +41,23 @@ CREATE TABLE IF NOT EXISTS users (
   month_reset_at  TIMESTAMPTZ DEFAULT date_trunc('month', NOW()) + INTERVAL '1 month',
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Connected social publishing accounts
+CREATE TABLE IF NOT EXISTS social_connections (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider         TEXT NOT NULL CHECK (provider IN ('twitter', 'linkedin')),
+  provider_user_id TEXT NOT NULL,
+  display_name     TEXT,
+  username         TEXT,
+  access_token     TEXT NOT NULL,
+  refresh_token    TEXT,
+  scopes           TEXT[] DEFAULT '{}',
+  expires_at       TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, provider)
 );
 
 -- ─── Projects ────────────────────────────────────────────────────────────────
@@ -69,10 +86,27 @@ CREATE TABLE IF NOT EXISTS outputs (
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Audit trail for direct social publishing
+CREATE TABLE IF NOT EXISTS social_publications (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  output_id        UUID NOT NULL REFERENCES outputs(id) ON DELETE CASCADE,
+  provider         TEXT NOT NULL CHECK (provider IN ('twitter', 'linkedin')),
+  provider_post_id TEXT,
+  provider_url     TEXT,
+  status           TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('published', 'failed')),
+  error            TEXT,
+  published_at     TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_projects_user_id    ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_outputs_project_id  ON outputs(project_id);
+CREATE INDEX IF NOT EXISTS idx_social_connections_user_id ON social_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_social_publications_user_id ON social_publications(user_id);
+CREATE INDEX IF NOT EXISTS idx_social_publications_output_id ON social_publications(output_id);
 
 -- ─── Updated-at trigger ──────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -83,16 +117,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS users_updated_at ON users;
 CREATE TRIGGER users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS projects_updated_at ON projects;
 CREATE TRIGGER projects_updated_at
   BEFORE UPDATE ON projects
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS outputs_updated_at ON outputs;
 CREATE TRIGGER outputs_updated_at
   BEFORE UPDATE ON outputs
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS social_connections_updated_at ON social_connections;
+CREATE TRIGGER social_connections_updated_at
+  BEFORE UPDATE ON social_connections
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ─── Monthly project counter reset function ───────────────────────────────────
@@ -114,19 +156,25 @@ ALTER TABLE users    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outputs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plans    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE social_publications ENABLE ROW LEVEL SECURITY;
 
 -- Plans are readable by everyone
+DROP POLICY IF EXISTS "Plans are public" ON plans;
 CREATE POLICY "Plans are public" ON plans FOR SELECT USING (true);
 
 -- Users can only read/update their own row
+DROP POLICY IF EXISTS "Users own their row" ON users;
 CREATE POLICY "Users own their row" ON users
   FOR ALL USING (id::text = current_setting('app.user_id', true));
 
 -- Projects scoped to owner
+DROP POLICY IF EXISTS "Projects scoped to owner" ON projects;
 CREATE POLICY "Projects scoped to owner" ON projects
   FOR ALL USING (user_id::text = current_setting('app.user_id', true));
 
 -- Outputs scoped to project owner
+DROP POLICY IF EXISTS "Outputs scoped to project owner" ON outputs;
 CREATE POLICY "Outputs scoped to project owner" ON outputs
   FOR ALL USING (
     project_id IN (
@@ -134,3 +182,13 @@ CREATE POLICY "Outputs scoped to project owner" ON outputs
       WHERE user_id::text = current_setting('app.user_id', true)
     )
   );
+
+-- Social connections scoped to owner
+DROP POLICY IF EXISTS "Social connections scoped to owner" ON social_connections;
+CREATE POLICY "Social connections scoped to owner" ON social_connections
+  FOR ALL USING (user_id::text = current_setting('app.user_id', true));
+
+-- Social publish history scoped to owner
+DROP POLICY IF EXISTS "Social publications scoped to owner" ON social_publications;
+CREATE POLICY "Social publications scoped to owner" ON social_publications
+  FOR ALL USING (user_id::text = current_setting('app.user_id', true));

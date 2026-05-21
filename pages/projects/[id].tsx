@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import ContentOutput from '@/components/ContentOutput';
 import { useAuth } from '@/hooks/useAuth';
-import type { Project, Output, Channel } from '@/types';
+import type { Project, Output, Channel, SocialProviderStatus } from '@/types';
 import { CHANNEL_CONFIGS } from '@/types';
 
 function formatDate(iso: string) {
@@ -41,8 +41,12 @@ export default function ProjectPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [outputs, setOutputs] = useState<Output[]>([]);
+  const [socialProviders, setSocialProviders] = useState<SocialProviderStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [publishingOutputId, setPublishingOutputId] = useState<string | null>(null);
+  const socialConnected = router.query.social_connected;
+  const socialError = router.query.social_error;
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -75,6 +79,34 @@ export default function ProjectPage() {
   useEffect(() => {
     if (id && user) fetchProject();
   }, [fetchProject, id, user]);
+
+  const fetchSocialStatus = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const res = await fetch('/api/social/status');
+      if (!res.ok) return;
+      const data = await res.json();
+      setSocialProviders(data.providers || []);
+    } catch {
+      setSocialProviders([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchSocialStatus();
+  }, [fetchSocialStatus]);
+
+  useEffect(() => {
+    if (typeof socialConnected === 'string') {
+      toast.success(`${socialConnected === 'twitter' ? 'X / Twitter' : 'LinkedIn'} connected.`);
+      fetchSocialStatus();
+      if (id) router.replace(`/projects/${id}`, undefined, { shallow: true });
+    } else if (typeof socialError === 'string') {
+      toast.error('Could not connect app. Check provider credentials and callback URLs.');
+      if (id) router.replace(`/projects/${id}`, undefined, { shallow: true });
+    }
+  }, [fetchSocialStatus, id, router, socialConnected, socialError]);
 
   async function regenerate() {
     if (!project) return;
@@ -111,6 +143,29 @@ export default function ProjectPage() {
     if (!res.ok) throw new Error('Save failed.');
     const data = await res.json();
     setOutputs((prev) => prev.map((o) => (o.id === outputId ? data.output : o)));
+  }
+
+  async function handlePublish(output: Output) {
+    setPublishingOutputId(output.id);
+    try {
+      const res = await fetch('/api/social/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ output_id: output.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to publish.');
+
+      const providerLabel = output.channel === 'twitter' ? 'X / Twitter' : 'LinkedIn';
+      toast.success(`Published to ${providerLabel}.`);
+      if (data.publication?.provider_url) {
+        window.open(data.publication.provider_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to publish.');
+    } finally {
+      setPublishingOutputId(null);
+    }
   }
 
   if (authLoading || loading) {
@@ -200,7 +255,14 @@ export default function ProjectPage() {
             </button>
           </div>
         ) : outputs.length > 0 ? (
-          <ContentOutput outputs={outputs} onEdit={handleEdit} />
+          <ContentOutput
+            outputs={outputs}
+            onEdit={handleEdit}
+            socialProviders={socialProviders}
+            onPublish={handlePublish}
+            publishingOutputId={publishingOutputId}
+            connectReturnTo={`/projects/${project.id}`}
+          />
         ) : (
           <div className="card text-center py-12">
             <p className="text-slate-500 text-sm mb-4">No outputs yet.</p>

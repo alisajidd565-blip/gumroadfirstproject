@@ -1,16 +1,27 @@
 import { useState, useCallback } from 'react';
-import { Copy, Download, Check, Edit3 } from 'lucide-react';
+import { Copy, Download, Check, Edit3, ExternalLink, Loader, Send } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import type { Output, Channel } from '@/types';
+import type { Output, Channel, SocialProviderStatus } from '@/types';
 import { CHANNEL_CONFIGS } from '@/types';
 
 interface ContentOutputProps {
   outputs: Output[];
   onEdit?: (outputId: string, newContent: string) => Promise<void>;
+  socialProviders?: SocialProviderStatus[];
+  onPublish?: (output: Output) => Promise<void>;
+  publishingOutputId?: string | null;
+  connectReturnTo?: string;
 }
 
-export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
+export default function ContentOutput({
+  outputs,
+  onEdit,
+  socialProviders = [],
+  onPublish,
+  publishingOutputId = null,
+  connectReturnTo = '/settings',
+}: ContentOutputProps) {
   const [activeTab, setActiveTab] = useState<Channel>(
     outputs.length > 0 ? outputs[0].channel as Channel : 'twitter'
   );
@@ -20,6 +31,9 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
   const [saving, setSaving] = useState(false);
 
   const activeOutput = outputs.find((o) => o.channel === activeTab);
+  const activeSocialProvider = activeOutput
+    ? socialProviders.find((provider) => provider.channel === activeOutput.channel)
+    : undefined;
 
   async function copyToClipboard(text: string, id: string) {
     await navigator.clipboard.writeText(text);
@@ -111,7 +125,7 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
           )}
 
           {/* Action row */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>{activeOutput.tokens_used} tokens</span>
               <span>·</span>
@@ -124,7 +138,7 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {editingId === activeOutput.id ? (
                 <>
                   <button
@@ -170,6 +184,38 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
                       <><Copy size={14} /> Copy</>
                     )}
                   </button>
+                  {activeSocialProvider && onPublish && (
+                    activeSocialProvider.connected ? (
+                      <button
+                        onClick={() => onPublish(activeOutput)}
+                        disabled={publishingOutputId === activeOutput.id}
+                        className="btn-primary text-sm py-1.5 px-4"
+                      >
+                        {publishingOutputId === activeOutput.id ? (
+                          <><Loader size={14} className="animate-spin" /> Publishing</>
+                        ) : (
+                          <><Send size={14} /> Publish</>
+                        )}
+                      </button>
+                    ) : activeSocialProvider.configured ? (
+                      <a
+                        href={`/api/social/connect/${activeSocialProvider.provider}?return_to=${encodeURIComponent(connectReturnTo)}`}
+                        className="btn-primary text-sm py-1.5 px-4"
+                      >
+                        <ExternalLink size={14} />
+                        Connect
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        className="btn-primary text-sm py-1.5 px-4"
+                        title="Provider credentials are not configured."
+                      >
+                        <Send size={14} />
+                        Publish
+                      </button>
+                    )
+                  )}
                 </>
               )}
             </div>

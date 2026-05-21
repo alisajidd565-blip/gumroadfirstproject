@@ -2,6 +2,10 @@
 
 export type Channel = 'twitter' | 'linkedin' | 'instagram' | 'email';
 
+export type SupportedSocialProvider = 'twitter' | 'linkedin';
+
+export type SocialProvider = SupportedSocialProvider | 'instagram';
+
 export type BrandVoice =
   | 'professional'
   | 'casual'
@@ -73,6 +77,32 @@ export interface Output {
   updated_at: string;
 }
 
+export interface SocialConnection {
+  id: string;
+  user_id: string;
+  provider: SupportedSocialProvider;
+  provider_user_id: string;
+  display_name: string | null;
+  username: string | null;
+  scopes: string[] | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SocialPublication {
+  id: string;
+  user_id: string;
+  output_id: string;
+  provider: SupportedSocialProvider;
+  provider_post_id: string | null;
+  provider_url: string | null;
+  status: 'published' | 'failed';
+  error: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
 // ─── API Request / Response Types ────────────────────────────────────────────
 
 export interface ApiError {
@@ -116,6 +146,18 @@ export interface GenerateRequest {
 export interface UpdateSettingsRequest {
   full_name?: string;
   brand_voice?: BrandVoice;
+}
+
+export interface SocialProviderStatus {
+  provider: SocialProvider;
+  channel: Channel | null;
+  label: string;
+  configured: boolean;
+  connected: boolean;
+  display_name?: string | null;
+  username?: string | null;
+  expires_at?: string | null;
+  disabled_reason?: string;
 }
 
 // ─── JWT Payload ──────────────────────────────────────────────────────────────

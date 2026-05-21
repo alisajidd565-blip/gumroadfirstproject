@@ -90,15 +90,30 @@ export async function getFreePlanId(db: AdminClient): Promise<string> {
   return freePlan.id;
 }
 
-export function mapDatabaseError(err: { code?: string; message?: string }): string | null {
-  const code = err.code ?? '';
-  const msg = err.message ?? '';
+export function mapDatabaseError(err: { code?: string; message?: string } | Error | unknown): string | null {
+  const maybeError = err as { code?: string; message?: string };
+  const code = maybeError?.code ?? '';
+  const msg = maybeError?.message ?? (err instanceof Error ? err.message : '');
 
-  if (code === '42P01' || msg.includes('does not exist')) {
+  if (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    msg.includes('does not exist') ||
+    msg.includes('schema cache')
+  ) {
     return 'Database tables are missing. Run schema.sql in your Supabase SQL Editor, then try again.';
   }
   if (code === 'PGRST301' || msg.includes('JWT')) {
     return 'Invalid Supabase service role key. Check SUPABASE_SERVICE_ROLE_KEY in your environment.';
+  }
+  if (
+    msg.includes('fetch failed') ||
+    msg.includes('Failed to fetch') ||
+    msg.includes('ENOTFOUND') ||
+    msg.includes('getaddrinfo') ||
+    msg.includes('could not be resolved')
+  ) {
+    return 'Could not reach Supabase. Check NEXT_PUBLIC_SUPABASE_URL in your environment.';
   }
   if (code === '23505') {
     return 'An account with this email already exists.';

@@ -39,7 +39,7 @@ export default function NewProjectPage() {
   useEffect(() => {
     if (!user) return;
     setChannels((prev) => prev.filter((c) => allowedChannels.includes(c)));
-  }, [user, planName]);
+  }, [user, planName, allowedChannels]);
 
   const textLength = sourceText.trim().length;
   const textValid = textLength >= MIN_TEXT_LENGTH;

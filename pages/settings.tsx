@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PlanBadge from '@/components/PlanBadge';
+import SocialConnections from '@/components/SocialConnections';
 import { useAuth } from '@/hooks/useAuth';
 import type { BrandVoice, PlanName } from '@/types';
 import { BRAND_VOICES } from '@/types';
@@ -44,7 +45,10 @@ export default function SettingsPage() {
   const [brandVoice, setBrandVoice] = useState<BrandVoice>('professional');
   const [savingProfile, setSavingProfile] = useState(false);
   const [upgradingPlan, setUpgradingPlan] = useState<PlanName | null>(null);
+  const [socialRefresh, setSocialRefresh] = useState(0);
   const upgradeStatus = router.query.upgrade;
+  const socialConnected = router.query.social_connected;
+  const socialError = router.query.social_error;
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -68,6 +72,17 @@ export default function SettingsPage() {
       router.replace('/settings', undefined, { shallow: true });
     }
   }, [refresh, router, upgradeStatus]);
+
+  useEffect(() => {
+    if (typeof socialConnected === 'string') {
+      toast.success(`${socialConnected === 'twitter' ? 'X / Twitter' : 'LinkedIn'} connected.`);
+      setSocialRefresh((value) => value + 1);
+      router.replace('/settings', undefined, { shallow: true });
+    } else if (typeof socialError === 'string') {
+      toast.error('Could not connect app. Check provider credentials and callback URLs.');
+      router.replace('/settings', undefined, { shallow: true });
+    }
+  }, [router, socialConnected, socialError]);
 
   async function handleSaveProfile(e: FormEvent) {
     e.preventDefault();
@@ -238,6 +253,8 @@ export default function SettingsPage() {
         </section>
 
         {/* ── Profile settings ──────────────────────────────────────────── */}
+        <SocialConnections refreshSignal={socialRefresh} />
+
         <form onSubmit={handleSaveProfile}>
           <section className="card mb-6">
             <h2 className="text-lg font-semibold text-slate-100 mb-5">Profile</h2>
