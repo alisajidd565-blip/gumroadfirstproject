@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [brandVoice, setBrandVoice] = useState<BrandVoice>('professional');
   const [savingProfile, setSavingProfile] = useState(false);
   const [upgradingPlan, setUpgradingPlan] = useState<PlanName | null>(null);
+  const upgradeStatus = router.query.upgrade;
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -58,16 +59,15 @@ export default function SettingsPage() {
 
   // Handle Stripe redirect back
   useEffect(() => {
-    const { upgrade } = router.query;
-    if (upgrade === 'success') {
+    if (upgradeStatus === 'success') {
       toast.success('🎉 Plan upgraded successfully! It may take a moment to reflect.', { duration: 6000 });
       refresh();
       router.replace('/settings', undefined, { shallow: true });
-    } else if (upgrade === 'canceled') {
+    } else if (upgradeStatus === 'canceled') {
       toast('Upgrade canceled. You can try again anytime.', { icon: '↩️' });
       router.replace('/settings', undefined, { shallow: true });
     }
-  }, [router.query]);
+  }, [refresh, router, upgradeStatus]);
 
   async function handleSaveProfile(e: FormEvent) {
     e.preventDefault();

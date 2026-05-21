@@ -1,4 +1,3 @@
-// @ts-nocheck - Supabase type inference issues with complex queries
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';

@@ -1,4 +1,3 @@
-// @ts-nocheck - Supabase type inference issues with complex queries
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { hashPassword, validatePasswordStrength, validateEmail, signToken, setAuthCookie } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
@@ -65,7 +64,12 @@ export default async function handler(
         full_name: full_name?.trim() || null,
         plan_id: freePlan.id,
       })
-      .select('id, email, full_name, plan_id, brand_voice, projects_this_month, subscription_status, created_at, updated_at')
+      .select(`
+        id, email, full_name, plan_id, brand_voice,
+        projects_this_month, subscription_status, month_reset_at,
+        stripe_customer_id, stripe_subscription_id, subscription_ends_at,
+        created_at, updated_at
+      `)
       .single();
 
     if (createError || !user) {

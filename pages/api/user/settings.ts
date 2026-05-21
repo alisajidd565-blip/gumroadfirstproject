@@ -1,11 +1,12 @@
-// @ts-nocheck - Supabase type inference issues with complex queries
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
 import type { UpdateSettingsRequest, BrandVoice } from '@/types';
 import { BRAND_VOICES } from '@/types';
+import type { Database } from '@/types/database';
 
 const VALID_VOICES = BRAND_VOICES.map((v) => v.value) as BrandVoice[];
+type UserUpdate = Database['public']['Tables']['users']['Update'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH') {
@@ -22,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid brand voice.' });
   }
 
-  const updates: Record<string, string> = {};
+  const updates: UserUpdate = {};
   if (full_name !== undefined) updates.full_name = full_name.trim();
   if (brand_voice !== undefined) updates.brand_voice = brand_voice;
 

@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 // ─── Browser client (uses anon key, respects RLS) ─────────────────────────────
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -10,11 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // ─── Server-side admin client (uses service role key, bypasses RLS) ───────────
 // Only use this in API routes, never expose to the browser.
-let _adminClient: ReturnType<typeof createClient> | null = null;
+let _adminClient: SupabaseClient<Database> | null = null;
 
 export function getAdminSupabase() {
   if (typeof window !== 'undefined') {
@@ -27,7 +28,7 @@ export function getAdminSupabase() {
   }
 
   if (!_adminClient) {
-    _adminClient = createClient(supabaseUrl, serviceKey, {
+    _adminClient = createClient<Database>(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

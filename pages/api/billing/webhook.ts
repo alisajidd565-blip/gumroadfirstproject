@@ -1,9 +1,11 @@
-// @ts-nocheck - Supabase type inference issues with complex queries
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { buffer } from 'micro';
 import Stripe from 'stripe';
 import { constructWebhookEvent, planFromPriceId } from '@/lib/stripe';
 import { getAdminSupabase } from '@/lib/supabase';
+import type { Database } from '@/types/database';
+
+type UserUpdate = Database['public']['Tables']['users']['Update'];
 
 // Disable Next.js body parsing — Stripe needs the raw body to verify signatures
 export const config = {
@@ -87,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const priceId = subscription.items.data[0]?.price?.id;
         const planName = planFromPriceId(priceId);
 
-        const updates: Record<string, string | null> = {
+        const updates: UserUpdate = {
           subscription_status: status,
           subscription_ends_at: endsAt,
         };

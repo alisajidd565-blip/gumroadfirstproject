@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
@@ -48,11 +48,9 @@ export default function ProjectPage() {
     if (!authLoading && !user) router.push('/login');
   }, [authLoading, user, router]);
 
-  useEffect(() => {
-    if (id && user) fetchProject();
-  }, [id, user]);
+  const fetchProject = useCallback(async () => {
+    if (!id) return;
 
-  async function fetchProject() {
     setLoading(true);
     try {
       const res = await fetch(`/api/projects/${id}`);
@@ -72,7 +70,11 @@ export default function ProjectPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id, router]);
+
+  useEffect(() => {
+    if (id && user) fetchProject();
+  }, [fetchProject, id, user]);
 
   async function regenerate() {
     if (!project) return;

@@ -8,7 +8,7 @@ const PROTECTED_ROUTES = ['/dashboard', '/projects', '/settings'];
 // Routes that logged-in users should not see (redirect to dashboard)
 const AUTH_ROUTES = ['/login', '/signup'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
@@ -36,7 +36,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run middleware on all routes except API routes, static files, and Next.js internals
+  // Run the proxy on all routes except API routes, static files, and Next.js internals
   matcher: [
     '/((?!api|_next/static|_next/image|favicon.ico|fonts|images).*)',
   ],
