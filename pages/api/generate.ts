@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
-import { generateAllChannels } from '@/lib/openai';
+import { generateAllChannels } from '@/lib/groq';
 import type { Channel, BrandVoice } from '@/types';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

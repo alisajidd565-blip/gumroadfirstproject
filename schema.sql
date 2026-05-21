@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS plans (
   display_name  TEXT NOT NULL,
   price_monthly INTEGER NOT NULL DEFAULT 0,     -- in cents (USD)
   project_limit INTEGER NOT NULL DEFAULT 3,     -- projects per calendar month
-  stripe_price_id TEXT,                         -- nullable for free plan
+  stripe_price_id TEXT,                         -- Paddle price ID (pri_...); nullable for free
   features      JSONB DEFAULT '[]',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash   TEXT NOT NULL,                -- bcrypt hash; never store plaintext
   full_name       TEXT,
   plan_id         UUID NOT NULL REFERENCES plans(id) DEFAULT (SELECT id FROM plans WHERE name = 'free'),
-  stripe_customer_id TEXT,                      -- set after first Stripe checkout
-  stripe_subscription_id TEXT,
+  stripe_customer_id TEXT,                      -- Paddle customer ID (ctm_...) after checkout
+  stripe_subscription_id TEXT,                  -- Paddle subscription ID (sub_...)
   subscription_status TEXT DEFAULT 'inactive',  -- 'active' | 'inactive' | 'canceled'
   subscription_ends_at TIMESTAMPTZ,
   brand_voice     TEXT DEFAULT 'professional',  -- user's preferred tone
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS outputs (
   content     TEXT NOT NULL,                    -- the AI-generated content
   edited      BOOLEAN DEFAULT FALSE,            -- true if user edited it
   tokens_used INTEGER DEFAULT 0,
-  model_used  TEXT DEFAULT 'gpt-4-turbo-preview',
+  model_used  TEXT DEFAULT 'llama-3.3-70b-versatile',
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );

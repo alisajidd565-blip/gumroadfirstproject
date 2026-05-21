@@ -1,17 +1,17 @@
 # ContentRepurposer AI
 
-Transform any blog post or article into platform-optimized content for **Twitter/X, LinkedIn, Instagram, and Email** — powered by GPT-4 Turbo.
+Transform any blog post or article into platform-optimized content for **Twitter/X, LinkedIn, Instagram, and Email** — powered by Groq (Llama 3.3).
 
 ---
 
 ## Features
 
-- **GPT-4 Turbo generation** with per-channel prompt engineering
+- **Groq / Llama 3.3 generation** with per-channel prompt engineering
 - **4 channels**: Twitter, LinkedIn, Instagram, Email Newsletter
 - **6 brand voices**: Professional, Casual, Witty, Authoritative, Inspirational, Educational
 - **User auth**: Secure email/password with JWT + HttpOnly cookies
 - **Subscription plans**: Free (3/mo), Pro (50/mo), Business (500/mo)
-- **Stripe billing**: Checkout sessions, webhooks, auto plan sync
+- **Paddle billing**: Checkout transactions, webhooks, auto plan sync
 - **Project history**: All past projects saved, paginated dashboard
 - **Editable outputs**: In-app editing + save
 - **Copy & download**: One-click clipboard copy and .txt download
@@ -31,8 +31,8 @@ Transform any blog post or article into platform-optimized content for **Twitter
 | Styling     | Tailwind CSS                           |
 | Database    | Supabase (Postgres)                    |
 | Auth        | Custom JWT + bcrypt                    |
-| AI          | OpenAI GPT-4 Turbo                     |
-| Payments    | Stripe Checkout + Webhooks             |
+| AI          | Groq (Llama 3.3 70B)                   |
+| Payments    | Paddle Billing + Webhooks              |
 | Deployment  | Vercel                                 |
 
 ---
@@ -54,8 +54,8 @@ content-repurposer/
 ├── lib/
 │   ├── auth.ts          # JWT, bcrypt, cookie helpers
 │   ├── supabase.ts      # Supabase client (browser + admin)
-│   ├── openai.ts        # OpenAI generation logic
-│   ├── stripe.ts        # Stripe checkout + webhook helpers
+│   ├── groq.ts          # Groq generation logic
+│   ├── paddle.ts        # Paddle checkout + webhook helpers
 │   └── prompts.ts       # Per-channel prompt templates
 ├── pages/
 │   ├── index.tsx        # Marketing / home
@@ -118,29 +118,24 @@ Then fill in all values in `.env.local`. See below for where to get each one.
 3. Go to **SQL Editor** and run the full contents of `schema.sql`
 4. Verify the `plans`, `users`, `projects`, and `outputs` tables exist
 
-### 4. Set up OpenAI
+### 4. Set up Groq
 
-1. Create an API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Make sure your account has access to `gpt-4-turbo-preview`
-3. Set `OPENAI_API_KEY` in your `.env.local`
+1. Create an API key at [console.groq.com/keys](https://console.groq.com/keys)
+2. Set `GROQ_API_KEY` in your `.env.local`
+3. Optionally set `GROQ_MODEL` (defaults to `llama-3.3-70b-versatile`)
 
-### 5. Set up Stripe (optional for local dev)
+### 5. Set up Paddle (optional for local dev)
 
-1. Create a Stripe account at [stripe.com](https://stripe.com)
-2. Use **Test mode** (toggle in top-right of Stripe dashboard)
-3. Go to **Products** → Create a product named "Pro Plan" → Add a price ($19/month, recurring)
-4. Create a product named "Business Plan" → Add a price ($49/month, recurring)
-5. Copy the Pro **Price ID** (starts with `price_`) → set as `STRIPE_PAID_PLAN_PRICE_ID`
-6. Copy the Business **Price ID** → set as `STRIPE_BUSINESS_PLAN_PRICE_ID`
-7. Copy your test secret key → `STRIPE_SECRET_KEY`
-8. Copy your publishable key → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-
-For webhooks locally, use the Stripe CLI:
-
-```bash
-stripe listen --forward-to localhost:3000/api/billing/webhook
-# Copy the webhook signing secret it prints → STRIPE_WEBHOOK_SECRET
-```
+1. Create a Paddle account at [paddle.com](https://paddle.com)
+2. In **Catalog**, create Pro ($19/mo) and Business ($49/mo) subscription prices
+3. Copy each **Price ID** (`pri_...`) → `PADDLE_PAID_PLAN_PRICE_ID` and `PADDLE_BUSINESS_PLAN_PRICE_ID`
+4. Set `PADDLE_API_KEY` from **Developer tools → Authentication**
+5. Under **Checkout → Checkout settings**, set an approved **Default payment link** that loads Paddle.js → `PADDLE_DEFAULT_PAYMENT_LINK`
+6. Under **Developer tools → Notifications**, add a webhook destination:
+   - URL: `https://your-domain.com/api/billing/webhook` (or use a tunnel for local dev)
+   - Events: `subscription.activated`, `subscription.updated`, `subscription.canceled`, `subscription.past_due`
+   - Copy the destination **secret key** → `PADDLE_WEBHOOK_SECRET`
+7. Update `plans.stripe_price_id` in Supabase with your real Paddle price IDs
 
 ### 6. Generate a JWT secret
 
@@ -180,10 +175,8 @@ Follow the prompts. Then add environment variables in the Vercel dashboard under
 ### After deploying
 
 1. Update `NEXT_PUBLIC_APP_URL` to your production URL (e.g. `https://yourapp.vercel.app`)
-2. Go to Stripe Dashboard → **Webhooks** → Add endpoint:
-   - URL: `https://yourapp.vercel.app/api/billing/webhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-3. Copy the webhook signing secret → update `STRIPE_WEBHOOK_SECRET` in Vercel
+2. In Paddle → **Notifications**, point your webhook to `https://yourapp.vercel.app/api/billing/webhook`
+3. Copy the destination secret → update `PADDLE_WEBHOOK_SECRET` in Vercel
 
 ---
 
@@ -196,12 +189,13 @@ Follow the prompts. Then add environment variables in the Vercel dashboard under
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API |
 | `JWT_SECRET` | Generate with `openssl rand -base64 64` |
-| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API keys |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Webhooks → signing secret |
-| `STRIPE_PAID_PLAN_PRICE_ID` | Stripe Dashboard → Products → your Pro plan price ID |
-| `STRIPE_BUSINESS_PLAN_PRICE_ID` | Stripe Dashboard → Products → your Business plan price ID |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
+| `GROQ_MODEL` | Optional Groq model id (default: `llama-3.3-70b-versatile`) |
+| `PADDLE_API_KEY` | Paddle → Developer tools → Authentication |
+| `PADDLE_WEBHOOK_SECRET` | Paddle → Developer tools → Notifications → destination secret |
+| `PADDLE_PAID_PLAN_PRICE_ID` | Paddle Catalog → Pro plan price ID (`pri_...`) |
+| `PADDLE_BUSINESS_PLAN_PRICE_ID` | Paddle Catalog → Business plan price ID (`pri_...`) |
+| `PADDLE_DEFAULT_PAYMENT_LINK` | Paddle → Checkout → default payment link URL |
 
 ---
 
@@ -235,7 +229,7 @@ To add a new channel (e.g. TikTok):
 2. Add its config to `CHANNEL_CONFIGS` in `types/index.ts`
 3. Add a prompt builder function in `lib/prompts.ts`
 4. Add the case to the `buildPrompt` switch statement
-5. Add generation config to `CHANNEL_CONFIG` in `lib/openai.ts`
+5. Add generation config to `CHANNEL_CONFIG` in `lib/groq.ts`
 
 ---
 

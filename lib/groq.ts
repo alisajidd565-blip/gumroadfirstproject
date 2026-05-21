@@ -1,18 +1,17 @@
-import OpenAI from 'openai';
 import { buildPrompt, SYSTEM_PROMPT } from './prompts';
 import type { Channel, BrandVoice } from '@/types';
 
-// ─── Singleton client ─────────────────────────────────────────────────────────
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
-let _client: OpenAI | null = null;
+function getApiKey(): string {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('Missing GROQ_API_KEY environment variable.');
+  return apiKey;
+}
 
-function getClient(): OpenAI {
-  if (!_client) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY environment variable.');
-    _client = new OpenAI({ apiKey });
-  }
-  return _client;
+function getModel(): string {
+  return process.env.GROQ_MODEL || DEFAULT_MODEL;
 }
 
 // ─── Generation config per channel ───────────────────────────────────────────
@@ -34,32 +33,48 @@ export interface GenerationResult {
   error?: string;
 }
 
+interface GroqChatResponse {
+  choices?: Array<{ message?: { content?: string } }>;
+  usage?: { total_tokens?: number };
+  error?: { message?: string };
+}
+
 export async function generateForChannel(
   channel: Channel,
   sourceText: string,
   brandVoice: BrandVoice
 ): Promise<GenerationResult> {
-  const client = getClient();
-  const model = 'gpt-4-turbo-preview';
+  const model = getModel();
   const config = CHANNEL_CONFIG[channel];
   const userPrompt = buildPrompt(channel, sourceText, brandVoice);
 
   try {
-    const completion = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: userPrompt },
-      ],
-      max_tokens: config.max_tokens,
-      temperature: config.temperature,
-      // Prevent model from truncating early
-      presence_penalty: 0.1,
-      frequency_penalty: 0.2,
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getApiKey()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: config.max_tokens,
+        temperature: config.temperature,
+      }),
     });
 
-    const content = completion.choices[0]?.message?.content?.trim() ?? '';
-    const tokens_used = completion.usage?.total_tokens ?? 0;
+    const data = (await response.json()) as GroqChatResponse;
+
+    if (!response.ok) {
+      const message = data.error?.message || `Groq API error (${response.status})`;
+      throw new Error(message);
+    }
+
+    const content = data.choices?.[0]?.message?.content?.trim() ?? '';
+    const tokens_used = data.usage?.total_tokens ?? 0;
 
     if (!content) {
       return {
@@ -73,8 +88,8 @@ export async function generateForChannel(
 
     return { channel, content, tokens_used, model_used: model };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown OpenAI error';
-    console.error(`[OpenAI] Error generating ${channel}:`, message);
+    const message = err instanceof Error ? err.message : 'Unknown Groq error';
+    console.error(`[Groq] Error generating ${channel}:`, message);
     return {
       channel,
       content: '',
@@ -92,7 +107,6 @@ export async function generateAllChannels(
   sourceText: string,
   brandVoice: BrandVoice
 ): Promise<GenerationResult[]> {
-  // Validate input
   if (!sourceText || sourceText.trim().length < 50) {
     throw new Error('Source text must be at least 50 characters.');
   }
@@ -100,10 +114,7 @@ export async function generateAllChannels(
     throw new Error('At least one channel must be selected.');
   }
 
-  // Run all generations in parallel — faster than sequential
-  const results = await Promise.all(
+  return Promise.all(
     channels.map((ch) => generateForChannel(ch, sourceText, brandVoice))
   );
-
-  return results;
 }

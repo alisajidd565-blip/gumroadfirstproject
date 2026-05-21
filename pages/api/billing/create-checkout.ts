@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { getAdminSupabase } from '@/lib/supabase';
-import { getOrCreateStripeCustomer, createCheckoutSession } from '@/lib/stripe';
+import { getOrCreatePaddleCustomer, createCheckoutTransaction } from '@/lib/paddle';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -14,10 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { plan } = req.body as { plan: 'pro' | 'business' };
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  // Resolve price ID from plan
   const priceMap: Record<string, string | undefined> = {
-    pro:      process.env.STRIPE_PAID_PLAN_PRICE_ID,
-    business: process.env.STRIPE_BUSINESS_PLAN_PRICE_ID,
+    pro:      process.env.PADDLE_PAID_PLAN_PRICE_ID,
+    business: process.env.PADDLE_BUSINESS_PLAN_PRICE_ID,
   };
 
   const priceId = plan && priceMap[plan];
@@ -28,26 +27,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const db = getAdminSupabase();
 
   const { data: rawUser, error } = await db
-  .from('users')
-  .select('id, email, stripe_customer_id')
-  .eq('id', payload.sub)
-  .single();
+    .from('users')
+    .select('id, email, stripe_customer_id')
+    .eq('id', payload.sub)
+    .single();
 
-if (error || !rawUser) {
-  return res.status(404).json({ error: 'User not found.' });
-}
+  if (error || !rawUser) {
+    return res.status(404).json({ error: 'User not found.' });
+  }
 
-const user = rawUser as { id: string; email: string; stripe_customer_id: string | null };
+  const user = rawUser as { id: string; email: string; stripe_customer_id: string | null };
 
   try {
-    // Get or create Stripe customer
-    const customerId = await getOrCreateStripeCustomer(
+    const customerId = await getOrCreatePaddleCustomer(
       user.id,
       user.email,
       user.stripe_customer_id
     );
 
-    // Persist the customer ID if it was just created
     if (!user.stripe_customer_id) {
       await db
         .from('users')
@@ -55,18 +52,17 @@ const user = rawUser as { id: string; email: string; stripe_customer_id: string 
         .eq('id', user.id);
     }
 
-    // Create Stripe Checkout session
-    const checkoutUrl = await createCheckoutSession({
-      customerId,
+    const checkoutUrl = await createCheckoutTransaction({
       priceId,
       userId: user.id,
+      customerId,
       successUrl: `${appUrl}/settings?upgrade=success`,
       cancelUrl: `${appUrl}/settings?upgrade=canceled`,
     });
 
     return res.status(200).json({ url: checkoutUrl });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
+    console.error('Paddle checkout error:', err);
     return res.status(500).json({ error: 'Failed to create checkout session.' });
   }
 }

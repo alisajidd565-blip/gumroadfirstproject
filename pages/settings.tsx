@@ -57,7 +57,7 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  // Handle Stripe redirect back
+  // Handle Paddle checkout redirect back
   useEffect(() => {
     if (upgradeStatus === 'success') {
       toast.success('🎉 Plan upgraded successfully! It may take a moment to reflect.', { duration: 6000 });
