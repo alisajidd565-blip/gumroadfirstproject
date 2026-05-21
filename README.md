@@ -129,9 +129,11 @@ Then fill in all values in `.env.local`. See below for where to get each one.
 1. Create a Stripe account at [stripe.com](https://stripe.com)
 2. Use **Test mode** (toggle in top-right of Stripe dashboard)
 3. Go to **Products** → Create a product named "Pro Plan" → Add a price ($19/month, recurring)
-4. Copy the **Price ID** (starts with `price_`) → set as `STRIPE_PAID_PLAN_PRICE_ID`
-5. Copy your test secret key → `STRIPE_SECRET_KEY`
-6. Copy your publishable key → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+4. Create a product named "Business Plan" → Add a price ($49/month, recurring)
+5. Copy the Pro **Price ID** (starts with `price_`) → set as `STRIPE_PAID_PLAN_PRICE_ID`
+6. Copy the Business **Price ID** → set as `STRIPE_BUSINESS_PLAN_PRICE_ID`
+7. Copy your test secret key → `STRIPE_SECRET_KEY`
+8. Copy your publishable key → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
 For webhooks locally, use the Stripe CLI:
 
@@ -199,6 +201,7 @@ Follow the prompts. Then add environment variables in the Vercel dashboard under
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API keys |
 | `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Webhooks → signing secret |
 | `STRIPE_PAID_PLAN_PRICE_ID` | Stripe Dashboard → Products → your Pro plan price ID |
+| `STRIPE_BUSINESS_PLAN_PRICE_ID` | Stripe Dashboard → Products → your Business plan price ID |
 
 ---
 

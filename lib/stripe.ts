@@ -103,8 +103,9 @@ export function constructWebhookEvent(
 
 // ─── Resolve plan name from Stripe price ID ──────────────────────────────────
 
-export function planFromPriceId(priceId: string): 'pro' | 'business' | null {
+export function planFromPriceId(priceId?: string | null): 'pro' | 'business' | null {
+  if (!priceId) return null;
   if (priceId === process.env.STRIPE_PAID_PLAN_PRICE_ID) return 'pro';
-  // Add more price IDs for business plan as needed
+  if (priceId === process.env.STRIPE_BUSINESS_PLAN_PRICE_ID) return 'business';
   return null;
 }

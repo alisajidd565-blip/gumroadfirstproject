@@ -11,7 +11,8 @@
     "OPENAI_API_KEY": "@openai_api_key",
     "STRIPE_SECRET_KEY": "@stripe_secret_key",
     "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
-    "STRIPE_PAID_PLAN_PRICE_ID": "@stripe_paid_plan_price_id"
+    "STRIPE_PAID_PLAN_PRICE_ID": "@stripe_paid_plan_price_id",
+    "STRIPE_BUSINESS_PLAN_PRICE_ID": "@stripe_business_plan_price_id"
   },
   "buildCommand": "next build",
   "outputDirectory": ".next",

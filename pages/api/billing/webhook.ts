@@ -47,7 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const stripe = (await import('@/lib/stripe')).getStripe();
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0]?.price?.id;
-        const planName = planFromPriceId(priceId) ?? 'pro';
+        const planName = planFromPriceId(priceId);
+
+        if (!planName) {
+          console.error('Unknown Stripe price ID:', priceId);
+          break;
+        }
 
         const { data: plan } = await db
           .from('plans')
@@ -79,13 +84,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const endsAt = subscription.cancel_at
           ? new Date(subscription.cancel_at * 1000).toISOString()
           : null;
+        const priceId = subscription.items.data[0]?.price?.id;
+        const planName = planFromPriceId(priceId);
+
+        const updates: Record<string, string | null> = {
+          subscription_status: status,
+          subscription_ends_at: endsAt,
+        };
+
+        if (planName) {
+          const { data: plan } = await db
+            .from('plans')
+            .select('id')
+            .eq('name', planName)
+            .single();
+
+          if (plan) {
+            updates.plan_id = plan.id;
+          }
+        }
 
         await db
           .from('users')
-          .update({
-            subscription_status: status,
-            subscription_ends_at: endsAt,
-          })
+          .update(updates)
           .eq('id', userId);
         break;
       }
