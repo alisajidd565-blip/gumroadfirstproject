@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: projects, error, count } = await db
       .from('projects')
       .select(`
-        id, title, channels, brand_voice, status, source_text,
+        id, title, channels, brand_voice, status, source_text, source_url,
         created_at, updated_at
       `, { count: 'exact' })
       .eq('user_id', payload.sub)
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    const { title, source_text, channels, brand_voice } = req.body as CreateProjectRequest;
+    const { title, source_text, source_url, channels, brand_voice } = req.body as CreateProjectRequest;
 
     if (!source_text || source_text.trim().length < 50) {
       return res.status(400).json({ error: 'Source text must be at least 50 characters.' });
@@ -88,6 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user_id: payload.sub,
         title: (title?.trim() || source_text.slice(0, 60).trim() + '…'),
         source_text: source_text.trim(),
+        source_url: source_url?.trim() || null,
         channels,
         brand_voice: brand_voice || 'professional',
         status: 'pending',

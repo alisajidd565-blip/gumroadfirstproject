@@ -56,6 +56,7 @@ export interface Project {
   user_id: string;
   title: string;
   source_text: string;
+  source_url?: string | null;
   channels: Channel[];
   brand_voice: BrandVoice;
   status: ProjectStatus;
@@ -135,8 +136,19 @@ export interface AuthResponse {
 export interface CreateProjectRequest {
   title?: string;
   source_text: string;
+  source_url?: string;
   channels: Channel[];
   brand_voice?: BrandVoice;
+}
+
+export interface ScrapeRequest {
+  url: string;
+}
+
+export interface ScrapeResponse {
+  title: string;
+  text: string;
+  word_count: number;
 }
 
 export interface GenerateRequest {

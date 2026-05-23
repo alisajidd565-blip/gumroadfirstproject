@@ -178,6 +178,7 @@ export type Database = {
           user_id: string;
           title: string;
           source_text: string;
+          source_url: string | null;
           channels: ('twitter' | 'linkedin' | 'instagram' | 'email')[];
           brand_voice:
             | 'professional'
@@ -195,6 +196,7 @@ export type Database = {
           user_id: string;
           title: string;
           source_text: string;
+          source_url?: string | null;
           channels: ('twitter' | 'linkedin' | 'instagram' | 'email')[];
           brand_voice?:
             | 'professional'
@@ -212,6 +214,7 @@ export type Database = {
           user_id?: string;
           title?: string;
           source_text?: string;
+          source_url?: string | null;
           channels?: ('twitter' | 'linkedin' | 'instagram' | 'email')[];
           brand_voice?:
             | 'professional'

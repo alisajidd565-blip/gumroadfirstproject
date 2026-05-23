@@ -66,12 +66,16 @@ CREATE TABLE IF NOT EXISTS projects (
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title       TEXT NOT NULL DEFAULT 'Untitled Project',
   source_text TEXT NOT NULL,                    -- original pasted blog/article text
+  source_url  TEXT,                             -- original article URL (if imported from link)
   channels    TEXT[] NOT NULL DEFAULT '{}',     -- ['twitter','linkedin','instagram','email']
   brand_voice TEXT NOT NULL DEFAULT 'professional',
   status      TEXT NOT NULL DEFAULT 'pending',  -- 'pending'|'processing'|'done'|'failed'
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: add source_url to existing projects table (safe to re-run)
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS source_url TEXT;
 
 -- ─── Outputs ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS outputs (
