@@ -1,7 +1,13 @@
 import { useState } from 'react';
-import { Copy, Download, Check, Edit3, Save, X } from 'lucide-react';
+import { Copy, Download, Check, Edit3, Save, X, ExternalLink, Loader, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { Output, Channel } from '@/types';
+import type { Output, Channel, SocialProviderStatus, SupportedSocialProvider } from '@/types';
+
+const PUBLISHABLE_CHANNELS = new Set<Channel>(['twitter', 'linkedin']);
+
+function channelProvider(channel: Channel): SupportedSocialProvider | null {
+  return PUBLISHABLE_CHANNELS.has(channel) ? (channel as SupportedSocialProvider) : null;
+}
 
 interface ChannelMeta {
   label: string;
@@ -23,9 +29,20 @@ type TabId = 'all' | Channel;
 interface ContentOutputProps {
   outputs: Output[];
   onEdit?: (outputId: string, newContent: string) => Promise<void>;
+  socialProviders?: SocialProviderStatus[];
+  onPublish?: (output: Output) => Promise<void>;
+  publishingOutputId?: string | null;
+  connectReturnTo?: string;
 }
 
-export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
+export default function ContentOutput({
+  outputs,
+  onEdit,
+  socialProviders = [],
+  onPublish,
+  publishingOutputId = null,
+  connectReturnTo = '/settings',
+}: ContentOutputProps) {
   const [activeTab, setActiveTab]   = useState<TabId>('all');
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [editValue, setEditValue]   = useState('');
@@ -152,6 +169,14 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
           const meta      = CHANNEL_META[output.channel] ?? { label: output.channel, color: '#999', bgColor: '#eee', accentBg: '#eee' };
           const isEditing = editingId === output.id;
           const isCopied  = copied === output.id;
+          const providerKey = channelProvider(output.channel);
+          const providerStatus = providerKey
+            ? socialProviders.find((p) => p.provider === providerKey)
+            : undefined;
+          const isPublishing = publishingOutputId === output.id;
+          const connectHref = providerKey
+            ? `/api/social/connect/${providerKey}?return_to=${encodeURIComponent(connectReturnTo)}`
+            : null;
 
           return (
             <div
@@ -241,6 +266,24 @@ export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
                       <button onClick={() => startEditing(output)} className="btn-outline">
                         <Edit3 size={12} /> Edit
                       </button>
+                    )}
+                    {providerKey && onPublish && providerStatus?.connected && (
+                      <button
+                        onClick={() => onPublish(output)}
+                        className="btn-primary text-xs py-1.5 px-3"
+                        disabled={isPublishing}
+                      >
+                        {isPublishing ? (
+                          <><Loader size={12} className="animate-spin" /> Publishing…</>
+                        ) : (
+                          <><Send size={12} /> Publish</>
+                        )}
+                      </button>
+                    )}
+                    {providerKey && providerStatus?.configured && !providerStatus.connected && connectHref && (
+                      <a href={connectHref} className="btn-outline">
+                        <ExternalLink size={12} /> Connect {providerStatus.label}
+                      </a>
                     )}
                   </>
                 )}

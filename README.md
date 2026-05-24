@@ -86,7 +86,7 @@ content-repurposer/
 │       └── settings.ts
 ├── types/index.ts        # All TypeScript types + constants
 ├── styles/globals.css    # Tailwind + global styles
-├── middleware.ts         # Route protection
+├── proxy.ts              # Route protection (auth redirects)
 ├── schema.sql            # Database schema + seeds
 ├── .env.example          # Required environment variables
 └── vercel.json           # Vercel deployment config

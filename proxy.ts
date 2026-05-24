@@ -8,7 +8,7 @@ const PROTECTED_ROUTES = ['/dashboard', '/projects', '/settings'];
 // Routes that logged-in users should not see (redirect to dashboard)
 const AUTH_ROUTES = ['/login', '/signup'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
