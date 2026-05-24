@@ -2,12 +2,12 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
-  Loader, Check, ExternalLink, ArrowLeft, Zap, AlertTriangle, CheckCircle
+  Loader, Check, ExternalLink, ArrowLeft, Zap,
+  AlertTriangle, CheckCircle, CreditCard, User, Palette,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Layout from '@/components/Layout';
 import PlanBadge from '@/components/PlanBadge';
-import SocialConnections from '@/components/SocialConnections';
 import { useAuth } from '@/hooks/useAuth';
 import type { BrandVoice, PlanName } from '@/types';
 import { BRAND_VOICES } from '@/types';
@@ -41,19 +41,13 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading, logout, refresh } = useAuth();
 
-  const [fullName, setFullName] = useState('');
-  const [brandVoice, setBrandVoice] = useState<BrandVoice>('professional');
+  const [fullName,      setFullName]      = useState('');
+  const [brandVoice,    setBrandVoice]    = useState<BrandVoice>('professional');
   const [savingProfile, setSavingProfile] = useState(false);
   const [upgradingPlan, setUpgradingPlan] = useState<PlanName | null>(null);
-  const [socialRefresh, setSocialRefresh] = useState(0);
   const upgradeStatus = router.query.upgrade;
-  const socialConnected = router.query.social_connected;
-  const socialError = router.query.social_error;
 
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/login');
-  }, [authLoading, user, router]);
-
+  useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [authLoading, user, router]);
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || '');
@@ -61,37 +55,25 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  // Handle Paddle checkout redirect back
   useEffect(() => {
     if (upgradeStatus === 'success') {
-      toast.success('🎉 Plan upgraded successfully! It may take a moment to reflect.', { duration: 6000 });
+      toast.success('🎉 Plan upgraded successfully!', { duration: 6000 });
       refresh();
       router.replace('/settings', undefined, { shallow: true });
     } else if (upgradeStatus === 'canceled') {
-      toast('Upgrade canceled. You can try again anytime.', { icon: '↩️' });
+      toast('Upgrade canceled.', { icon: '↩️' });
       router.replace('/settings', undefined, { shallow: true });
     }
   }, [refresh, router, upgradeStatus]);
-
-  useEffect(() => {
-    if (typeof socialConnected === 'string') {
-      toast.success(`${socialConnected === 'twitter' ? 'X / Twitter' : 'LinkedIn'} connected.`);
-      setSocialRefresh((value) => value + 1);
-      router.replace('/settings', undefined, { shallow: true });
-    } else if (typeof socialError === 'string') {
-      toast.error('Could not connect app. Check provider credentials and callback URLs.');
-      router.replace('/settings', undefined, { shallow: true });
-    }
-  }, [router, socialConnected, socialError]);
 
   async function handleSaveProfile(e: FormEvent) {
     e.preventDefault();
     setSavingProfile(true);
     try {
-      const res = await fetch('/api/user/settings', {
-        method: 'PATCH',
+      const res  = await fetch('/api/user/settings', {
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, brand_voice: brandVoice }),
+        body:    JSON.stringify({ full_name: fullName, brand_voice: brandVoice }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -108,10 +90,10 @@ export default function SettingsPage() {
     if (planName === 'free') return;
     setUpgradingPlan(planName);
     try {
-      const res = await fetch('/api/billing/create-checkout', {
-        method: 'POST',
+      const res  = await fetch('/api/billing/create-checkout', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planName }),
+        body:    JSON.stringify({ plan: planName }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -126,15 +108,15 @@ export default function SettingsPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <Loader size={24} className="text-cyan-400 animate-spin" />
+          <Loader size={22} className="animate-spin" style={{ color: 'var(--brand-500)' }} />
         </div>
       </Layout>
     );
   }
 
   const currentPlan = ((user.plan as any)?.name as PlanName) ?? 'free';
-  const planLimit = (user.plan as any)?.project_limit ?? 3;
-  const isActive = user.subscription_status === 'active';
+  const planLimit   = (user.plan as any)?.project_limit ?? 3;
+  const isActive    = user.subscription_status === 'active';
 
   return (
     <Layout user={user} onLogout={logout} title="Settings">
@@ -142,77 +124,107 @@ export default function SettingsPage() {
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm mb-6 transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
           <ArrowLeft size={14} />
           Back to dashboard
         </Link>
 
-        <h1 className="page-title text-2xl md:text-3xl mb-8">Account settings</h1>
+        <h1 className="page-title text-2xl md:text-3xl mb-8">Account Settings</h1>
 
         {/* ── Plan & Billing ─────────────────────────────────────────────── */}
-        <section className="card mb-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-slate-100">Plan & billing</h2>
-            <PlanBadge plan={currentPlan} />
+        <section className="panel p-6 mb-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'var(--brand-bg)', border: '1px solid var(--brand-border)' }}
+            >
+              <CreditCard size={15} style={{ color: 'var(--brand-500)' }} />
+            </div>
+            <div className="flex items-center gap-3 flex-1">
+              <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>Plan &amp; Billing</h2>
+              <PlanBadge plan={currentPlan} />
+            </div>
           </div>
 
-          {/* Current plan info */}
-          <div className="flex items-center gap-4 p-4 bg-slate-800 rounded-xl mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shrink-0">
-              <Zap size={18} className="text-slate-950" fill="currentColor" />
+          {/* Current plan summary */}
+          <div
+            className="flex items-center gap-4 p-4 rounded-xl mb-5"
+            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-mid)' }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #00A389, #2ABBA0)' }}
+            >
+              <Zap size={18} fill="white" className="text-white" />
             </div>
-            <div>
-              <p className="font-semibold text-slate-100 capitalize">{currentPlan} plan</p>
-              <p className="text-sm text-slate-400">
+            <div className="flex-1">
+              <p className="font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>
+                {currentPlan} plan
+              </p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {planLimit} projects/month · {user.projects_this_month ?? 0} used this month
               </p>
               {user.subscription_ends_at && (
-                <p className="text-xs text-amber-400 mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: '#D97706' }}>
                   <AlertTriangle size={11} className="inline mr-1" />
                   Cancels on {new Date(user.subscription_ends_at).toLocaleDateString()}
                 </p>
               )}
             </div>
             {isActive && currentPlan !== 'free' && (
-              <span className="ml-auto flex items-center gap-1 text-xs text-emerald-400 font-semibold">
-                <CheckCircle size={13} />
-                Active
+              <span
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+                style={{ background: '#D1FAE5', color: '#065F46' }}
+              >
+                <CheckCircle size={12} /> Active
               </span>
             )}
           </div>
 
-          {/* Plan comparison cards */}
+          {/* Plan cards */}
           <div className="grid sm:grid-cols-3 gap-3 mb-4">
             {PLANS.map((plan) => {
               const isCurrent = currentPlan === plan.name;
               return (
                 <div
                   key={plan.name}
-                  className={`p-4 rounded-xl border flex flex-col gap-3 transition-all ${
-                    isCurrent
-                      ? 'border-cyan-500/50 bg-cyan-500/5'
+                  className="p-4 rounded-xl flex flex-col gap-3 transition-all"
+                  style={{
+                    border: isCurrent
+                      ? '2px solid var(--brand-400)'
                       : plan.highlight
-                      ? 'border-slate-600 bg-slate-800/40'
-                      : 'border-slate-700 bg-slate-800/20'
-                  }`}
+                      ? '1px solid var(--border-mid)'
+                      : '1px solid var(--border-subtle)',
+                    background: isCurrent ? 'var(--brand-bg)' : 'var(--bg-input)',
+                  }}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-semibold text-slate-200 text-sm">{plan.label}</span>
+                      <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {plan.label}
+                      </span>
                       {isCurrent && (
-                        <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full font-medium">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: 'var(--brand-400)', color: 'white' }}
+                        >
                           Current
                         </span>
                       )}
                     </div>
-                    <p className="text-slate-400 text-xs">{plan.price}</p>
-                    <p className="text-slate-500 text-xs mt-0.5">{plan.limit}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                      {plan.price}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{plan.limit}</p>
                   </div>
                   <ul className="space-y-1 flex-1">
                     {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs text-slate-400">
-                        <Check size={11} className="text-cyan-400 mt-0.5 shrink-0" />
+                      <li key={f} className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <Check size={11} style={{ color: 'var(--brand-500)', marginTop: 2 }} className="shrink-0" />
                         {f}
                       </li>
                     ))}
@@ -226,10 +238,7 @@ export default function SettingsPage() {
                       {upgradingPlan === plan.name ? (
                         <Loader size={12} className="animate-spin" />
                       ) : (
-                        <>
-                          <ExternalLink size={11} />
-                          Upgrade to {plan.label}
-                        </>
+                        <><ExternalLink size={11} /> Upgrade to {plan.label}</>
                       )}
                     </button>
                   )}
@@ -239,35 +248,32 @@ export default function SettingsPage() {
           </div>
 
           {currentPlan !== 'free' && isActive && (
-            <p className="text-xs text-slate-600 text-center">
+            <p className="text-xs text-center" style={{ color: 'var(--text-faint)' }}>
               To cancel or manage your subscription,{' '}
-              <a
-                href="mailto:support@contentrepurposer.ai"
-                className="text-slate-400 hover:text-slate-300 underline"
-              >
+              <a href="mailto:support@contentrepurposer.ai" className="underline" style={{ color: 'var(--text-muted)' }}>
                 contact support
-              </a>
-              .
+              </a>.
             </p>
           )}
         </section>
 
-        {/* ── Profile settings ──────────────────────────────────────────── */}
-        <SocialConnections refreshSignal={socialRefresh} />
-
+        {/* ── Profile ─────────────────────────────────────────────────────── */}
         <form onSubmit={handleSaveProfile}>
-          <section className="card mb-6">
-            <h2 className="text-lg font-semibold text-slate-100 mb-5">Profile</h2>
+          <section className="panel p-6 mb-5">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: '#EDE9FE', border: '1px solid #DDD6FE' }}
+              >
+                <User size={15} style={{ color: '#7C3AED' }} />
+              </div>
+              <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>Profile</h2>
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="input-label">Email address</label>
-                <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className="input opacity-50 cursor-not-allowed"
-                />
-                <p className="text-xs text-slate-600 mt-1">Email cannot be changed.</p>
+                <input type="email" value={user.email} disabled className="input opacity-60 cursor-not-allowed" />
+                <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>Email cannot be changed.</p>
               </div>
               <div>
                 <label className="input-label">Full name</label>
@@ -283,26 +289,45 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* ── Brand voice ──────────────────────────────────────────────── */}
-          <section className="card mb-6">
-            <h2 className="text-lg font-semibold text-slate-100 mb-1">Default brand voice</h2>
-            <p className="text-sm text-slate-500 mb-5">
-              This becomes the default tone for all new projects. You can override it per-project.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {/* ── Brand voice ── */}
+          <section className="panel p-6 mb-5">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: '#FEF3C7', border: '1px solid #FCD34D' }}
+              >
+                <Palette size={15} style={{ color: '#D97706' }} />
+              </div>
+              <div>
+                <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>Default Brand Voice</h2>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Default for all new projects. Override per-project on the workspace.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
               {BRAND_VOICES.map((v) => (
                 <button
                   key={v.value}
                   type="button"
                   onClick={() => setBrandVoice(v.value)}
-                  className={`text-left p-3 rounded-lg border text-sm transition-all ${
-                    brandVoice === v.value
-                      ? 'border-cyan-500 bg-cyan-500/10 text-slate-100'
-                      : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
-                  }`}
+                  className="text-left p-3 rounded-xl transition-all"
+                  style={{
+                    border: brandVoice === v.value
+                      ? '2px solid var(--brand-400)'
+                      : '1px solid var(--border-mid)',
+                    background: brandVoice === v.value ? 'var(--brand-bg)' : 'var(--bg-input)',
+                  }}
                 >
-                  <div className="font-semibold text-xs mb-0.5">{v.label}</div>
-                  <div className="text-xs text-slate-500 leading-tight">{v.description}</div>
+                  <div
+                    className="font-semibold text-xs mb-0.5"
+                    style={{ color: brandVoice === v.value ? 'var(--brand-600)' : 'var(--text-primary)' }}
+                  >
+                    {v.label}
+                  </div>
+                  <div className="text-xs leading-tight" style={{ color: 'var(--text-muted)' }}>
+                    {v.description}
+                  </div>
                 </button>
               ))}
             </div>
@@ -312,27 +337,30 @@ export default function SettingsPage() {
             <button type="submit" disabled={savingProfile} className="btn-primary px-8">
               {savingProfile ? (
                 <span className="flex items-center gap-2">
-                  <Loader size={14} className="animate-spin" />
-                  Saving…
+                  <Loader size={14} className="animate-spin" /> Saving…
                 </span>
               ) : 'Save settings'}
             </button>
           </div>
         </form>
 
-        {/* ── Danger zone ───────────────────────────────────────────────── */}
-        <section className="card border-red-500/20 mt-6">
-          <h2 className="text-base font-semibold text-slate-300 mb-3">Danger zone</h2>
+        {/* ── Danger zone ── */}
+        <section
+          className="panel p-5 mt-5"
+          style={{ borderColor: '#FECACA' }}
+        >
+          <h2 className="font-bold text-sm mb-3" style={{ color: '#DC2626' }}>Danger Zone</h2>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Log out of your account</p>
-              <p className="text-xs text-slate-600">You&apos;ll need to log back in to access your projects.</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Log out of your account</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                You&apos;ll need to log back in to access your projects.
+              </p>
             </div>
-            <button onClick={logout} className="btn-danger text-sm py-2 px-4">
-              Log out
-            </button>
+            <button onClick={logout} className="btn-danger text-sm py-2 px-4">Log out</button>
           </div>
         </section>
+
       </div>
     </Layout>
   );

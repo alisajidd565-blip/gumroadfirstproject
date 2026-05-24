@@ -1,39 +1,47 @@
-import { useState, useCallback } from 'react';
-import { Copy, Download, Check, Edit3, ExternalLink, Loader, Send } from 'lucide-react';
-import clsx from 'clsx';
+import { useState } from 'react';
+import { Copy, Download, Check, Edit3, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { Output, Channel, SocialProviderStatus } from '@/types';
-import { CHANNEL_CONFIGS } from '@/types';
+import type { Output, Channel } from '@/types';
+
+interface ChannelMeta {
+  label: string;
+  color: string;
+  bgColor: string;
+  accentBg: string;
+}
+
+const CHANNEL_META: Record<string, ChannelMeta> = {
+  twitter:   { label: 'Twitter',   color: '#1DA1F2', bgColor: '#EBF6FD', accentBg: '#DBEAFE' },
+  linkedin:  { label: 'LinkedIn',  color: '#0A66C2', bgColor: '#E8F1FA', accentBg: '#DBEAFE' },
+  instagram: { label: 'Instagram', color: '#E1306C', bgColor: '#FDEEF3', accentBg: '#FCE7F3' },
+  email:     { label: 'Email',     color: '#D97706', bgColor: '#FEF3C7', accentBg: '#FEF3C7' },
+  facebook:  { label: 'Facebook',  color: '#1877F2', bgColor: '#EBF2FD', accentBg: '#DBEAFE' },
+};
+
+type TabId = 'all' | Channel;
 
 interface ContentOutputProps {
   outputs: Output[];
   onEdit?: (outputId: string, newContent: string) => Promise<void>;
-  socialProviders?: SocialProviderStatus[];
-  onPublish?: (output: Output) => Promise<void>;
-  publishingOutputId?: string | null;
-  connectReturnTo?: string;
 }
 
-export default function ContentOutput({
-  outputs,
-  onEdit,
-  socialProviders = [],
-  onPublish,
-  publishingOutputId = null,
-  connectReturnTo = '/settings',
-}: ContentOutputProps) {
-  const [activeTab, setActiveTab] = useState<Channel>(
-    outputs.length > 0 ? outputs[0].channel as Channel : 'twitter'
-  );
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [copied, setCopied] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+export default function ContentOutput({ outputs, onEdit }: ContentOutputProps) {
+  const [activeTab, setActiveTab]   = useState<TabId>('all');
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editValue, setEditValue]   = useState('');
+  const [copied, setCopied]         = useState<string | null>(null);
+  const [saving, setSaving]         = useState(false);
 
-  const activeOutput = outputs.find((o) => o.channel === activeTab);
-  const activeSocialProvider = activeOutput
-    ? socialProviders.find((provider) => provider.channel === activeOutput.channel)
-    : undefined;
+  const visibleOutputs =
+    activeTab === 'all'
+      ? outputs
+      : outputs.filter((o) => o.channel === activeTab);
+
+  // Build tabs
+  const channelCounts: Record<string, number> = {};
+  for (const o of outputs) {
+    channelCounts[o.channel] = (channelCounts[o.channel] ?? 0) + 1;
+  }
 
   async function copyToClipboard(text: string, id: string) {
     await navigator.clipboard.writeText(text);
@@ -42,11 +50,11 @@ export default function ContentOutput({
     setTimeout(() => setCopied(null), 2000);
   }
 
-  function downloadAsText(content: string, channel: Channel) {
+  function downloadAsText(content: string, channel: string) {
     const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `${channel}-content.txt`;
     a.click();
     URL.revokeObjectURL(url);
@@ -59,10 +67,8 @@ export default function ContentOutput({
   }
 
   async function saveEdit(output: Output) {
-    if (!onEdit || editValue.trim() === output.content) {
-      setEditingId(null);
-      return;
-    }
+    if (!onEdit) { setEditingId(null); return; }
+    if (editValue.trim() === output.content) { setEditingId(null); return; }
     setSaving(true);
     try {
       await onEdit(output.id, editValue.trim());
@@ -78,150 +84,171 @@ export default function ContentOutput({
   if (!outputs.length) return null;
 
   return (
-    <div className="card animate-slide-up">
-      <h3 className="text-lg font-semibold text-slate-100 mb-4">Generated Content</h3>
+    <div className="flex flex-col h-full animate-slide-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+          Generated Results
+        </h2>
+        <span
+          className="text-xs font-medium px-2.5 py-1 rounded-full"
+          style={{ background: 'var(--brand-bg)', color: 'var(--brand-500)', border: '1px solid var(--brand-border)' }}
+        >
+          {outputs.length} output{outputs.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-slate-800 rounded-lg overflow-x-auto">
-        {outputs.map((output) => {
-          const config = CHANNEL_CONFIGS[output.channel as Channel];
+      <div
+        className="flex items-center gap-1 p-1 rounded-xl mb-4 shrink-0 overflow-x-auto"
+        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}
+      >
+        {/* All tab */}
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`tab text-sm ${activeTab === 'all' ? 'active' : ''}`}
+        >
+          All
+          <span
+            className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-semibold"
+            style={{
+              background: activeTab === 'all' ? 'var(--brand-500)' : 'var(--border-mid)',
+              color: activeTab === 'all' ? 'white' : 'var(--text-muted)',
+            }}
+          >
+            {outputs.length}
+          </span>
+        </button>
+
+        {/* Per-channel tabs */}
+        {Object.entries(channelCounts).map(([ch, count]) => {
+          const meta   = CHANNEL_META[ch] ?? { label: ch, color: '#999', bgColor: '#eee', accentBg: '#eee' };
+          const isActive = activeTab === ch;
           return (
             <button
-              key={output.channel}
-              onClick={() => setActiveTab(output.channel as Channel)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all',
-                activeTab === output.channel
-                  ? 'bg-slate-700 text-slate-100 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300'
-              )}
+              key={ch}
+              onClick={() => setActiveTab(ch as TabId)}
+              className={`tab text-sm ${isActive ? 'active' : ''}`}
+              style={isActive ? { color: meta.color, background: meta.bgColor } : {}}
             >
-              <span className={clsx('text-base', config.color)}>{config.icon}</span>
-              <span>{config.label}</span>
-              {output.edited && (
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 ml-1" title="Edited" />
-              )}
+              {meta.label}
+              <span
+                className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                style={{
+                  background: isActive ? meta.color : 'var(--border-mid)',
+                  color: 'white',
+                }}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Active output */}
-      {activeOutput && (
-        <div className="space-y-3">
-          {editingId === activeOutput.id ? (
-            <textarea
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="textarea h-64 font-mono text-sm leading-relaxed"
-              autoFocus
-            />
-          ) : (
-            <div className="relative">
-              <pre className="whitespace-pre-wrap font-sans text-sm text-slate-200 bg-slate-800 rounded-lg p-4 leading-relaxed min-h-[160px] max-h-[400px] overflow-y-auto border border-slate-700">
-                {activeOutput.content}
-              </pre>
-            </div>
-          )}
+      {/* Results scroll area */}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-0.5">
+        {visibleOutputs.map((output, idx) => {
+          const meta      = CHANNEL_META[output.channel] ?? { label: output.channel, color: '#999', bgColor: '#eee', accentBg: '#eee' };
+          const isEditing = editingId === output.id;
+          const isCopied  = copied === output.id;
 
-          {/* Action row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>{activeOutput.tokens_used} tokens</span>
-              <span>·</span>
-              <span>{activeOutput.model_used}</span>
-              {activeOutput.edited && (
-                <>
-                  <span>·</span>
-                  <span className="text-cyan-400">Edited</span>
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {editingId === activeOutput.id ? (
-                <>
-                  <button
-                    onClick={() => setEditingId(null)}
-                    className="btn-ghost text-sm py-1.5 px-3"
-                    disabled={saving}
+          return (
+            <div
+              key={output.id}
+              className={`result-card animate-slide-in ${idx === 0 ? 'highlighted' : ''}`}
+              style={{ animationDelay: `${idx * 40}ms`, borderLeftWidth: 3, borderLeftColor: meta.color }}
+            >
+              {/* Card header */}
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: meta.bgColor, color: meta.color }}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => saveEdit(activeOutput)}
-                    className="btn-primary text-sm py-1.5 px-4"
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving…' : 'Save changes'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {onEdit && (
-                    <button
-                      onClick={() => startEditing(activeOutput)}
-                      className="btn-ghost text-sm py-1.5 px-3"
+                    {meta.label} Option {idx + 1}
+                  </span>
+                  {output.edited && (
+                    <span
+                      className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'var(--brand-bg)', color: 'var(--brand-500)' }}
                     >
-                      <Edit3 size={14} />
-                      Edit
-                    </button>
+                      Edited
+                    </span>
                   )}
-                  <button
-                    onClick={() => downloadAsText(activeOutput.content, activeOutput.channel as Channel)}
-                    className="btn-ghost text-sm py-1.5 px-3"
-                  >
-                    <Download size={14} />
-                    Download
-                  </button>
-                  <button
-                    onClick={() => copyToClipboard(activeOutput.content, activeOutput.id)}
-                    className="btn-secondary text-sm py-1.5 px-4"
-                  >
-                    {copied === activeOutput.id ? (
-                      <><Check size={14} className="text-cyan-400" /> Copied</>
-                    ) : (
-                      <><Copy size={14} /> Copy</>
-                    )}
-                  </button>
-                  {activeSocialProvider && onPublish && (
-                    activeSocialProvider.connected ? (
-                      <button
-                        onClick={() => onPublish(activeOutput)}
-                        disabled={publishingOutputId === activeOutput.id}
-                        className="btn-primary text-sm py-1.5 px-4"
-                      >
-                        {publishingOutputId === activeOutput.id ? (
-                          <><Loader size={14} className="animate-spin" /> Publishing</>
-                        ) : (
-                          <><Send size={14} /> Publish</>
-                        )}
-                      </button>
-                    ) : activeSocialProvider.configured ? (
-                      <a
-                        href={`/api/social/connect/${activeSocialProvider.provider}?return_to=${encodeURIComponent(connectReturnTo)}`}
-                        className="btn-primary text-sm py-1.5 px-4"
-                      >
-                        <ExternalLink size={14} />
-                        Connect
-                      </a>
-                    ) : (
-                      <button
-                        disabled
-                        className="btn-primary text-sm py-1.5 px-4"
-                        title="Provider credentials are not configured."
-                      >
-                        <Send size={14} />
-                        Publish
-                      </button>
-                    )
-                  )}
-                </>
+                </div>
+                <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                  {output.tokens_used} tokens
+                </span>
+              </div>
+
+              {/* Content */}
+              {isEditing ? (
+                <textarea
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="textarea text-sm leading-relaxed h-36"
+                  autoFocus
+                />
+              ) : (
+                <p
+                  className="text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {output.content}
+                </p>
               )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="btn-outline gap-1"
+                      disabled={saving}
+                    >
+                      <X size={12} /> Cancel
+                    </button>
+                    <button
+                      onClick={() => saveEdit(output)}
+                      className="btn-primary text-xs py-1.5 px-3"
+                      disabled={saving}
+                    >
+                      <Save size={12} />
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => copyToClipboard(output.content, output.id)}
+                      className="btn-outline"
+                    >
+                      {isCopied ? (
+                        <><Check size={12} style={{ color: 'var(--brand-500)' }} /> Copied</>
+                      ) : (
+                        <><Copy size={12} /> Copy</>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => downloadAsText(output.content, output.channel)}
+                      className="btn-outline"
+                    >
+                      <Download size={12} /> Download
+                    </button>
+                    {onEdit && (
+                      <button onClick={() => startEditing(output)} className="btn-outline">
+                        <Edit3 size={12} /> Edit
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

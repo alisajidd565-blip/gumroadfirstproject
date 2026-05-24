@@ -17,7 +17,7 @@ export default function Layout({
   user,
   onLogout,
   title = 'ContentRepurposer AI',
-  description = 'Transform any blog post into platform-perfect content for Twitter, LinkedIn, Instagram, and Email — powered by Groq AI.',
+  description = 'Transform any blog post into platform-perfect content for Twitter, LinkedIn, Instagram, and Email — powered by GPT-4.',
   showFooter = true,
 }: LayoutProps) {
   const fullTitle = title === 'ContentRepurposer AI' ? title : `${title} — ContentRepurposer AI`;
@@ -34,7 +34,10 @@ export default function Layout({
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen flex flex-col bg-slate-950 dark:bg-slate-950 transition-colors">
+      <div
+        className="min-h-screen flex flex-col"
+        style={{ background: 'var(--bg-page)' }}
+      >
         <Navbar user={user} onLogout={onLogout} />
         <main className="flex-1">{children}</main>
         {showFooter && <Footer />}

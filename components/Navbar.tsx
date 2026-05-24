@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
-import { Menu, X, Zap } from 'lucide-react';
-import { useDarkMode } from '@/hooks/useDarkMode';
+import { Search, Bell, ChevronDown, Zap, Menu, X, LayoutDashboard, FolderOpen, BarChart2, Settings } from 'lucide-react';
 import type { User } from '@/types';
 import clsx from 'clsx';
 
@@ -11,140 +10,238 @@ interface NavbarProps {
   onLogout?: () => void;
 }
 
-export default function Navbar({ user, onLogout }: NavbarProps) {
-  const router = useRouter();
-  const [theme, toggleTheme] = useDarkMode();
-  const [menuOpen, setMenuOpen] = useState(false);
+const NAV_LINKS = [
+  { href: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/projects',   label: 'Projects',   icon: FolderOpen },
+  { href: '/analytics',  label: 'Analytics',  icon: BarChart2 },
+  { href: '/settings',   label: 'Settings',   icon: Settings },
+];
 
-  const navLinks = user
-    ? [
-        { href: '/dashboard', label: 'Dashboard' },
-        { href: '/projects/new', label: 'New Project' },
-        { href: '/settings', label: 'Settings' },
-      ]
-    : [
-        { href: '/#features', label: 'Features' },
-        { href: '/#pricing', label: 'Pricing' },
-      ];
+export default function Navbar({ user, onLogout }: NavbarProps) {
+  const router   = useRouter();
+  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : user?.email?.[0]?.toUpperCase() ?? '?';
+
+  const displayName = user?.full_name
+    ? user.full_name.split(' ')[0] + ' ' + (user.full_name.split(' ')[1]?.[0] ?? '') + '.'
+    : user?.email?.split('@')[0] ?? '';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-md dark:bg-slate-950/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition-shadow">
-              <Zap size={16} className="text-slate-950" fill="currentColor" />
+    <header
+      className="sticky top-0 z-50 w-full"
+      style={{
+        background: 'var(--bg-panel)',
+        borderBottom: '1px solid var(--border-subtle)',
+        boxShadow: '0 1px 8px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6">
+        <div className="flex h-[60px] items-center gap-4">
+
+          {/* ── Logo ── */}
+          <Link
+            href={user ? '/dashboard' : '/'}
+            className="flex items-center gap-2.5 shrink-0 group mr-2"
+          >
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #00A389, #2ABBA0)' }}
+            >
+              <Zap size={15} className="text-white" fill="white" />
             </div>
-            <span className="font-semibold text-slate-100 text-base tracking-tight">
-              ContentRepurposer<span className="text-cyan-400"> AI</span>
+            <span className="font-bold text-sm hidden sm:block" style={{ color: 'var(--text-primary)' }}>
+              ContentRepurposer{' '}
+              <span style={{ color: 'var(--brand-500)' }}>AI</span>
             </span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={clsx(
-                  'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                  router.pathname === link.href
-                    ? 'bg-slate-800 text-slate-100'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          {/* ── Desktop Nav ── */}
+          {user && (
+            <nav className="hidden md:flex items-center gap-0.5">
+              {NAV_LINKS.map(({ href, label }) => {
+                const active = router.pathname === href || router.pathname.startsWith(href + '/');
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={clsx('nav-link', active && 'active')}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
-          {/* Right side */}
-          <div className="flex items-center gap-2">
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="5" />
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              )}
-            </button>
+          {/* ── Spacer ── */}
+          <div className="flex-1" />
 
+          {/* ── Search ── */}
+          {user && (
+            <div className="relative hidden sm:block">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--text-faint)' }}
+              />
+              <input
+                type="text"
+                placeholder="Search projects…"
+                className="h-9 pl-9 pr-4 rounded-xl text-sm w-48 focus:w-64 transition-all duration-200 focus:outline-none"
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-mid)',
+                  color: 'var(--text-primary)',
+                }}
+                onFocus={(e) => (e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,163,137,0.12)')}
+                onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
+              />
+            </div>
+          )}
+
+          {/* ── Right actions ── */}
+          <div className="flex items-center gap-1">
             {user ? (
               <>
-                <span className="hidden md:block text-sm text-slate-500 px-2">
-                  {user.email}
-                </span>
-                <button onClick={onLogout} className="btn-secondary hidden md:flex text-sm py-2 px-4">
-                  Log out
+                {/* Bell */}
+                <button className="btn-icon relative">
+                  <Bell size={17} />
+                  <span
+                    className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                    style={{ background: 'var(--brand-500)' }}
+                  />
                 </button>
+
+                {/* User menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-all duration-150 ml-1"
+                    style={{ border: '1px solid var(--border-mid)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    {/* Avatar */}
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)' }}
+                    >
+                      {initials}
+                    </div>
+                    <span className="text-sm font-medium hidden sm:block" style={{ color: 'var(--text-primary)' }}>
+                      {displayName}
+                    </span>
+                    <ChevronDown
+                      size={13}
+                      className={clsx('transition-transform duration-150', userMenuOpen && 'rotate-180')}
+                      style={{ color: 'var(--text-muted)' }}
+                    />
+                  </button>
+
+                  {/* Dropdown */}
+                  {userMenuOpen && (
+                    <div
+                      className="absolute right-0 top-full mt-1.5 w-44 rounded-xl py-1 z-50 animate-pop"
+                      style={{
+                        background: 'var(--bg-panel)',
+                        border: '1px solid var(--border-subtle)',
+                        boxShadow: 'var(--shadow-lifted)',
+                      }}
+                    >
+                      <div
+                        className="px-4 py-2 text-xs font-medium border-b mb-1"
+                        style={{ color: 'var(--text-muted)', borderColor: 'var(--border-subtle)' }}
+                      >
+                        {user.email}
+                      </div>
+                      <Link
+                        href="/settings"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm w-full transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <Settings size={13} />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); onLogout?.(); }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm w-full text-left transition-colors"
+                        style={{ color: '#DC2626' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
-                <Link href="/login" className="btn-ghost hidden md:flex text-sm">
-                  Log in
-                </Link>
-                <Link href="/signup" className="btn-primary text-sm py-2 px-4">
-                  Get started
-                </Link>
+                <Link href="/login" className="btn-ghost text-sm">Log in</Link>
+                <Link href="/signup" className="btn-primary text-sm py-2 px-4">Get started</Link>
               </>
             )}
 
-            {/* Mobile menu toggle */}
+            {/* Mobile toggle */}
             <button
-              className="md:hidden p-2 text-slate-400 hover:text-slate-100"
-              onClick={() => setMenuOpen(!menuOpen)}
+              className="btn-icon md:hidden ml-1"
+              onClick={() => setMobileOpen(!mobileOpen)}
             >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-slate-950 px-4 py-4 flex flex-col gap-2 animate-fade-in">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className={clsx(
-                'px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                router.pathname === link.href
-                  ? 'bg-slate-800 text-slate-100'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <hr className="border-slate-800 my-1" />
-          {user ? (
+      {/* ── Mobile menu ── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden border-t px-4 py-3 space-y-0.5 animate-slide-in"
+          style={{ background: 'var(--bg-panel)', borderColor: 'var(--border-subtle)' }}
+        >
+          {user
+            ? NAV_LINKS.map(({ href, label, icon: Icon }) => {
+                const active = router.pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={clsx(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                      active ? 'text-brand-500 bg-brand-50' : 'text-text-secondary'
+                    )}
+                    style={{
+                      color: active ? 'var(--brand-500)' : 'var(--text-secondary)',
+                      background: active ? 'var(--brand-bg)' : 'transparent',
+                    }}
+                  >
+                    <Icon size={16} />
+                    {label}
+                  </Link>
+                );
+              })
+            : (
+              <div className="flex flex-col gap-2 pt-2">
+                <Link href="/login" onClick={() => setMobileOpen(false)} className="btn-secondary w-full">Log in</Link>
+                <Link href="/signup" onClick={() => setMobileOpen(false)} className="btn-primary w-full">Get started</Link>
+              </div>
+            )}
+          {user && (
             <button
-              onClick={() => { setMenuOpen(false); onLogout?.(); }}
-              className="btn-secondary w-full"
+              onClick={() => { setMobileOpen(false); onLogout?.(); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors mt-2"
+              style={{ color: '#DC2626' }}
             >
               Log out
             </button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="btn-secondary w-full text-center">
-                Log in
-              </Link>
-              <Link href="/signup" onClick={() => setMenuOpen(false)} className="btn-primary w-full text-center">
-                Get started free
-              </Link>
-            </div>
           )}
         </div>
       )}

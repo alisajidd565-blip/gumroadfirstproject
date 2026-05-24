@@ -95,6 +95,7 @@ const CHANNELS = [
 
 export default function HomePage() {
   return (
+    <div className="dark">
     <Layout showFooter title="ContentRepurposer AI — Turn One Post Into Four">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-24 md:py-36">
@@ -284,5 +285,6 @@ export default function HomePage() {
         </div>
       </section>
     </Layout>
+    </div>
   );
 }
