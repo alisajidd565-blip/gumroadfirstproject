@@ -174,7 +174,7 @@ export async function scrapeArticle(rawUrl: string): Promise<ScrapeResult> {
       el.find('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, figcaption').each((_, elem) => {
         const text = $(elem).text().trim();
         if (text.length > 0) {
-          const tag = (elem as cheerio.Element).tagName?.toLowerCase() || '';
+          const tag = (elem as any).tagName?.toLowerCase() || '';
           if (tag.startsWith('h')) {
             blocks.push(`\n${text}\n`);
           } else if (tag === 'li') {
