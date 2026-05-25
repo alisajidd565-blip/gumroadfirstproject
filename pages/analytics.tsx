@@ -1,8 +1,27 @@
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AnalyticsPage() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: 'var(--brand-500)' }} />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <Layout user={user} onLogout={logout} title="Analytics">

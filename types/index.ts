@@ -69,7 +69,7 @@ export interface Project {
 export interface Output {
   id: string;
   project_id: string;
-  channel: Channel;
+  channel: Channel; // Backend-supported channels only; facebook is UI-only in ChannelSelector
   content: string;
   edited: boolean;
   tokens_used: number;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Copy, Download, Check, Edit3, Save, X, ExternalLink, Loader, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Output, Channel, SocialProviderStatus, SupportedSocialProvider } from '@/types';
+import type { ExtendedChannel } from './ChannelSelector';
 
 const PUBLISHABLE_CHANNELS = new Set<Channel>(['twitter', 'linkedin']);
 
@@ -24,7 +25,7 @@ const CHANNEL_META: Record<string, ChannelMeta> = {
   facebook:  { label: 'Facebook',  color: '#1877F2', bgColor: '#EBF2FD', accentBg: '#DBEAFE' },
 };
 
-type TabId = 'all' | Channel;
+type TabId = 'all' | ExtendedChannel;
 
 interface ContentOutputProps {
   outputs: Output[];

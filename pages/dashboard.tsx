@@ -22,7 +22,10 @@ const BACKEND_CHANNELS = ['twitter', 'linkedin', 'instagram', 'email'] as const;
 type BackendChannel = typeof BACKEND_CHANNELS[number];
 
 function formatRelativeDate(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
+  const ts = new Date(iso).getTime();
+  if (isNaN(ts)) return 'Invalid date';
+  const diff = Date.now() - ts;
+  if (diff <= 0) return 'Just now';
   const mins  = Math.floor(diff / 60000);
   if (mins < 1)   return 'Just now';
   if (mins < 60)  return `${mins}m ago`;
@@ -72,20 +75,24 @@ export default function DashboardPage() {
 
   // ── Load recent projects ───────────────────────────────────────────────────
   useEffect(() => {
+    async function fetchRecentProjects() {
+      setLoadingProjects(true);
+      try {
+        const res  = await fetch('/api/projects?page=1&limit=8');
+        if (!res.ok) {
+          toast.error('Failed to load recent projects.');
+          return;
+        }
+        const data = await res.json();
+        setRecentProjects(data.projects ?? []);
+      } catch {
+        toast.error('Failed to load recent projects.');
+      } finally {
+        setLoadingProjects(false);
+      }
+    }
     if (user) fetchRecentProjects();
   }, [user]);
-
-  async function fetchRecentProjects() {
-    setLoadingProjects(true);
-    try {
-      const res  = await fetch('/api/projects?page=1&limit=8');
-      if (!res.ok) return;
-      const data = await res.json();
-      setRecentProjects(data.projects ?? []);
-    } finally {
-      setLoadingProjects(false);
-    }
-  }
 
   // ── Load a project into the workspace ─────────────────────────────────────
   async function openProject(id: string) {
@@ -199,14 +206,18 @@ export default function DashboardPage() {
 
   // ── Edit output ───────────────────────────────────────────────────────────
   async function handleEdit(outputId: string, newContent: string) {
-    const res = await fetch(`/api/outputs/${outputId}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ content: newContent }),
-    });
-    if (!res.ok) throw new Error('Save failed.');
-    const data = await res.json();
-    setOutputs((prev) => prev.map((o) => (o.id === outputId ? data.output : o)));
+    try {
+      const res = await fetch(`/api/outputs/${outputId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ content: newContent }),
+      });
+      if (!res.ok) throw new Error('Save failed.');
+      const data = await res.json();
+      setOutputs((prev) => prev.map((o) => (o.id === outputId ? data.output : o)));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed.');
+    }
   }
 
   // ── Derived state ─────────────────────────────────────────────────────────

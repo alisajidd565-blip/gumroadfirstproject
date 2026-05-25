@@ -7,7 +7,17 @@ import Layout from '@/components/Layout';
 
 export default function LoginPage() {
   const router = useRouter();
-  const next   = (router.query.next as string) || '/dashboard';
+  
+  function safeRedirect(next: string | string[] | undefined): string {
+    if (typeof next !== 'string') return '/dashboard';
+    // Only allow relative paths starting with /
+    if (!next.startsWith('/')) return '/dashboard';
+    // Prevent protocol-relative URLs
+    if (next.startsWith('//')) return '/dashboard';
+    return next;
+  }
+  
+  const next = safeRedirect(router.query.next);
 
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');

@@ -244,7 +244,7 @@ export default function SignupPage() {
               </p>
 
               <p className="mt-4 text-center text-xs" style={{ color: 'var(--text-faint)' }}>
-                By creating an account, you agree to our Terms of Service and Privacy Policy.
+                By creating an account, you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Privacy Policy</a>.
               </p>
             </div>
           </div>

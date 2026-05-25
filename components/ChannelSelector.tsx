@@ -86,11 +86,11 @@ interface ChannelSelectorProps {
 export default function ChannelSelector({ selected, onChange, disabled }: ChannelSelectorProps) {
   function toggle(ch: ExtendedChannel) {
     if (disabled) return;
-    onChange(
-      selected.includes(ch)
-        ? selected.filter((c) => c !== ch)
-        : [...selected, ch]
-    );
+    const newSelected = selected.includes(ch)
+      ? selected.filter((c) => c !== ch)
+      : [...selected, ch];
+    // Filter out facebook before calling onChange (API doesn't support it)
+    onChange(newSelected.filter((c) => c !== 'facebook'));
   }
 
   return (

@@ -122,7 +122,7 @@
            disabled:opacity-50 disabled:cursor-not-allowed
            focus:outline-none focus:ring-2 focus:ring-offset-2;
     background: var(--brand-500);
-    focus-ring-color: var(--brand-400);
+    --tw-ring-color: var(--brand-400);
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--brand-600);
@@ -212,7 +212,7 @@
     background: var(--bg-input);
     color: var(--text-primary);
     border: 1px solid var(--border-mid);
-    focus-ring-color: var(--brand-400);
+    --tw-ring-color: var(--brand-400);
   }
   .input:focus {
     border-color: var(--brand-400);
